@@ -1,0 +1,8 @@
+kafka-python
+pandas
+scikit-learn
+sdv
+psycopg2-binary
+sqlalchemy
+streamlit
+river
