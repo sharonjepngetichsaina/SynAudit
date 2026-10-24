@@ -99,7 +99,7 @@ python ingestion/test_reservoir.py
 python ingestion/test_dgim.py
 ```
 
-## Known limitations
+## Known limitations so far
 
 These affect how other services should read this layer's output.
 
@@ -110,13 +110,13 @@ read it alongside the drift detectors, which can tell the two apart.
 
 **It is the wrong tool for membership checks.** Exact-copy detection needs every
 real record, not a sample: 1,000 records out of 48,842 would catch roughly 2% of
-copies. Privacy checks should consume the full real stream directly.
+copies. Privacy checks should consume the full real stream directly. Something we
+might need to discuss.
 
 **DGIM rates carry 10–18% error at the default r=2.** Too noisy to see a shift of
-a few percentage points. `--buckets-per-size 6` brings it to about 7% for roughly
-triple the buckets, which is still negligible.
+a few % so `--buckets-per-size 6` brings it to about 7% for roughly
+triple the buckets, which is negligible.
 
 **Adult holds 6,374 exact duplicate rows (13%) after `fnlwgt` is dropped.** The
 raw file has about 50; removing the near-unique weight column collapses otherwise
-identical people together. This is a baseline any exact-match privacy metric has
-to account for.
+identical people together: something to look out for with bloom filters
