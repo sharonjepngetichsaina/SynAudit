@@ -1,8 +1,5 @@
 # Quality service: runbook (Diana)
 
-Run everything from the project root (`...\Downloads\SynAudit`) with the venv active:
-`& "C:\Users\Diana Grigoryan\Downloads\.venv313\Scripts\Activate.ps1"`
-
 ## 0. Install the extra packages (once)
 ```powershell
 pip install -r quality\requirements.txt
