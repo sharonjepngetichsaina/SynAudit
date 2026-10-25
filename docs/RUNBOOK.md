@@ -65,15 +65,8 @@ docker logs -f synaudit-quality-adult
 cd ..
 ```
 
-## 7. Push to GitHub
-```powershell
-git status
-git add scripts quality docs docker data\synthetic results
-git commit -m "Quality service: generator fixes, SDMetrics, streaming consumer, CluStream and DenStream"
-git push
-```
 
-## What is not verified yet (check these when you run it)
+## What is not verified yet 
 - SDV fit with the zero-as-missing trick: step 1's Self-check shows whether it worked. If `capital_gain` zeros are still far from 92%, tell me and I will switch the approach.
 - The `sdmetrics` report call, the real Kafka connection, InfluxDB writes and the Docker build were written to the library APIs but could not be run where this was built.
 - CluStream and DenStream are written from the papers' algorithms with the simplifications listed at the top of `quality\clustering.py`. Cross-check parameters and the CluStream relevance-stamp rule against the paper before the report.
