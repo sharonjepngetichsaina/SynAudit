@@ -1,0 +1,209 @@
+{
+    "tables": {
+        "adult": {
+            "columns": {
+                "age": {
+                    "sdtype": "numerical",
+                    "range_is_nullable": false,
+                    "range_min": 17,
+                    "range_max": 90,
+                    "decimal_places": 0
+                },
+                "workclass": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": true,
+                    "range_values": [
+                        "State-gov",
+                        "Self-emp-not-inc",
+                        "Private",
+                        "Federal-gov",
+                        "Local-gov",
+                        "Self-emp-inc",
+                        "Without-pay",
+                        "Never-worked"
+                    ],
+                    "high_cardinality": false
+                },
+                "education": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "Bachelors",
+                        "HS-grad",
+                        "11th",
+                        "Masters",
+                        "9th",
+                        "Some-college",
+                        "Assoc-acdm",
+                        "Assoc-voc",
+                        "7th-8th",
+                        "Doctorate",
+                        "Prof-school",
+                        "5th-6th",
+                        "10th",
+                        "1st-4th",
+                        "Preschool",
+                        "12th"
+                    ],
+                    "high_cardinality": false
+                },
+                "education_num": {
+                    "sdtype": "numerical",
+                    "range_is_nullable": false,
+                    "range_min": 1,
+                    "range_max": 16,
+                    "decimal_places": 0
+                },
+                "marital_status": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "Never-married",
+                        "Married-civ-spouse",
+                        "Divorced",
+                        "Married-spouse-absent",
+                        "Separated",
+                        "Married-AF-spouse",
+                        "Widowed"
+                    ],
+                    "high_cardinality": false
+                },
+                "occupation": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": true,
+                    "range_values": [
+                        "Adm-clerical",
+                        "Exec-managerial",
+                        "Handlers-cleaners",
+                        "Prof-specialty",
+                        "Other-service",
+                        "Sales",
+                        "Craft-repair",
+                        "Transport-moving",
+                        "Farming-fishing",
+                        "Machine-op-inspct",
+                        "Tech-support",
+                        "Protective-serv",
+                        "Armed-Forces",
+                        "Priv-house-serv"
+                    ],
+                    "high_cardinality": false
+                },
+                "relationship": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "Not-in-family",
+                        "Husband",
+                        "Wife",
+                        "Own-child",
+                        "Unmarried",
+                        "Other-relative"
+                    ],
+                    "high_cardinality": false
+                },
+                "race": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "White",
+                        "Black",
+                        "Asian-Pac-Islander",
+                        "Amer-Indian-Eskimo",
+                        "Other"
+                    ],
+                    "high_cardinality": false
+                },
+                "sex": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "Male",
+                        "Female"
+                    ],
+                    "high_cardinality": false
+                },
+                "capital_gain": {
+                    "sdtype": "numerical",
+                    "range_is_nullable": false,
+                    "range_min": 0,
+                    "range_max": 99999,
+                    "decimal_places": 0
+                },
+                "capital_loss": {
+                    "sdtype": "numerical",
+                    "range_is_nullable": false,
+                    "range_min": 0,
+                    "range_max": 4356,
+                    "decimal_places": 0
+                },
+                "hours_per_week": {
+                    "sdtype": "numerical",
+                    "range_is_nullable": false,
+                    "range_min": 1,
+                    "range_max": 99,
+                    "decimal_places": 0
+                },
+                "native_country": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": true,
+                    "range_values": [
+                        "United-States",
+                        "Cuba",
+                        "Jamaica",
+                        "India",
+                        "Mexico",
+                        "South",
+                        "Puerto-Rico",
+                        "Honduras",
+                        "England",
+                        "Canada",
+                        "Germany",
+                        "Iran",
+                        "Philippines",
+                        "Italy",
+                        "Poland",
+                        "Columbia",
+                        "Cambodia",
+                        "Thailand",
+                        "Ecuador",
+                        "Laos",
+                        "Taiwan",
+                        "Haiti",
+                        "Portugal",
+                        "Dominican-Republic",
+                        "El-Salvador",
+                        "France",
+                        "Guatemala",
+                        "China",
+                        "Japan",
+                        "Yugoslavia",
+                        "Peru",
+                        "Outlying-US(Guam-USVI-etc)",
+                        "Scotland",
+                        "Trinadad&Tobago",
+                        "Greece",
+                        "Nicaragua",
+                        "Vietnam",
+                        "Hong",
+                        "Ireland",
+                        "Hungary",
+                        "Holand-Netherlands"
+                    ],
+                    "high_cardinality": false
+                },
+                "income": {
+                    "sdtype": "categorical",
+                    "range_is_nullable": false,
+                    "range_values": [
+                        "<=50K",
+                        ">50K"
+                    ],
+                    "high_cardinality": false
+                }
+            }
+        }
+    },
+    "relationships": [],
+    "METADATA_SPEC_VERSION": "V2"
+}

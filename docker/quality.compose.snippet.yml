@@ -1,0 +1,46 @@
+# Paste these two services under `services:` in docker/docker-compose.yml.
+# Check three names against Matilda's / Alina's file before starting:
+#   - the Kafka service is called `kafka` (bootstrap kafka:9092)
+#   - the InfluxDB service is called `influxdb` and INFLUX_TOKEN / INFLUX_ORG / INFLUX_BUCKET match Alina's setup
+
+  quality-adult:
+    build:
+      context: ..
+      dockerfile: quality/Dockerfile
+    container_name: synaudit-quality-adult
+    depends_on:
+      - kafka
+    environment:
+      DATASET: adult
+      KAFKA_BOOTSTRAP: kafka:9092
+      QUALITY_WINDOW: "500"
+      QUALITY_STEP: "100"
+      QUALITY_SDMETRICS_EVERY: "5"
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG:-synaudit}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-synaudit}
+    volumes:
+      - ../results:/app/results
+    restart: unless-stopped
+
+  quality-credit-default:
+    build:
+      context: ..
+      dockerfile: quality/Dockerfile
+    container_name: synaudit-quality-credit-default
+    depends_on:
+      - kafka
+    environment:
+      DATASET: credit-default
+      KAFKA_BOOTSTRAP: kafka:9092
+      QUALITY_WINDOW: "500"
+      QUALITY_STEP: "100"
+      QUALITY_SDMETRICS_EVERY: "10"
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG:-synaudit}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-synaudit}
+    volumes:
+      - ../results:/app/results
+    restart: unless-stopped

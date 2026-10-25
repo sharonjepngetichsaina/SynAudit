@@ -1,0 +1,16 @@
+{
+  "dataset": "adult",
+  "rows_real": 48842,
+  "rows_synthetic": 10000,
+  "smd_mean": 0.0059508224843296,
+  "smd_max": 0.009448646630282265,
+  "tvd_mean": 0.00780174212540208,
+  "corr_diff_mean": 0.05526913457765584,
+  "zero_gap_max": 0.0035866754023177183,
+  "consistency": {
+    "education->education_num": 1.0
+  },
+  "sdmetrics_overall": 0.8978543808224861,
+  "sdmetrics_column_shapes": 0.9691472795661813,
+  "sdmetrics_column_pair_trends": 0.826561482078791
+}

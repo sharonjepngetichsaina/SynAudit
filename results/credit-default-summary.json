@@ -1,0 +1,14 @@
+{
+  "dataset": "credit-default",
+  "rows_real": 30000,
+  "rows_synthetic": 10000,
+  "smd_mean": 0.0415394316331624,
+  "smd_max": 0.20049334909119212,
+  "tvd_mean": null,
+  "corr_diff_mean": 0.08344154136875644,
+  "zero_gap_max": 0.2435,
+  "consistency": {},
+  "sdmetrics_overall": 0.886236094246628,
+  "sdmetrics_column_shapes": 0.8517791666666666,
+  "sdmetrics_column_pair_trends": 0.9206930218265893
+}
