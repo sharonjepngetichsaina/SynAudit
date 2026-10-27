@@ -24,11 +24,20 @@ from river import drift
 
 # Page-Hinkley defaults: delta ~ half the smallest shift (in std) we want to
 # catch; threshold chosen on drift-free data to keep false alarms rare.
-DEFAULTS = {
+""" This was before changing the Among the settings with 0 false alarms, δ = 0.25, λ = 50 
+is the fastest: about 35% quicker with no extra false alarms.
+ DEFAULTS = {
     "adwin": {"delta": 0.002},
     "page_hinkley": {"min_instances": 30, "delta": 0.1, "threshold": 100.0},
 }
-
+"""
+# Page-Hinkley defaults chosen with drift/calibration.py: among the settings
+# with no false alarms on drift-free data, delta=0.25 / threshold=50 had the
+# shortest delay (results/drift/calibration_grid.csv).
+DEFAULTS = {
+    "adwin": {"delta": 0.002},
+    "page_hinkley": {"min_instances": 30, "delta": 0.25, "threshold": 50.0},
+}
 
 def make_detector(name, **params):
     """Create a fresh detector; `params` override the defaults."""
