@@ -20,6 +20,11 @@ import pandas as pd
 PROCESSED = Path("data/processed")
 SYNTHETIC = Path("data/synthetic")
 
+# Size of the reference sample. 4,000 rather than 2,000: with a smaller
+# reference, one unusual reference sample makes several windows alarm at
+# once (clustered false alarms in the chi-square test, see calibration).
+REF_SIZE = 4000
+
 TARGETS = {
     "adult": "income",
     "credit-default": "default_payment_next_month",
@@ -63,7 +68,7 @@ def column_types(dataset="adult", df=None):
     return numeric, categorical
 
 
-def reference_and_stream(df, ref_size=2000, shuffle_seed=None):
+def reference_and_stream(df, ref_size=REF_SIZE, shuffle_seed=None):
     """Split records into a reference sample and the stream that follows it.
 
     The first `ref_size` records are the reference: what 'normal' looks like.
@@ -85,8 +90,7 @@ if __name__ == "__main__":
     real = load_real("adult")
     syn = load_synthetic("adult")
     num, cat = column_types("adult", syn)
-    ref, stream = reference_and_stream(syn, ref_size=2000)
-
+    ref, stream = reference_and_stream(syn)
     print(f"real:      {real.shape[0]:,} rows x {real.shape[1]} columns")
     print(f"synthetic: {syn.shape[0]:,} rows x {syn.shape[1]} columns")
     print(f"numeric ({len(num)}):     {num}")

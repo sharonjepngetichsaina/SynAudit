@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     syn = load_synthetic("adult")
     num, _ = column_types("adult", syn)
-    ref, stream = reference_and_stream(syn, ref_size=2000)
+    ref, stream = reference_and_stream(syn)
     t0 = 4000
 
     print("No drift (every alarm is a false alarm):")

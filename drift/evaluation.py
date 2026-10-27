@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     rows = []
     for seed in seeds:
-        ref, stream = reference_and_stream(syn, ref_size=2000, shuffle_seed=seed)
+        ref, stream = reference_and_stream(syn, shuffle_seed=seed)
         drifted = inject_sudden(stream, "age", t0, shift_in_std(ref, "age", 0.5))
         for score in score_numeric_run(ref, drifted, "age", t0, n_tests):
             rows.append(dict(seed=seed, **score))

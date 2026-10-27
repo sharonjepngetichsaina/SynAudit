@@ -51,7 +51,7 @@ def inject_categorical(stream, col, start, from_cat, to_cat, frac, seed=0):
 if __name__ == "__main__":
     from drift.data import load_synthetic, reference_and_stream
 
-    ref, stream = reference_and_stream(load_synthetic("adult"), ref_size=2000)
+    ref, stream = reference_and_stream(load_synthetic("adult"))
     t0 = len(stream) // 2
     shift = shift_in_std(ref, "age", 0.5)
     print(f"drift starts at record t0 = {t0:,}; 0.5 std of age = {shift:.1f} years\n")

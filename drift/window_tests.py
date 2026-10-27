@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
     syn = load_synthetic("adult")
     num, cat = column_types("adult", syn)
-    ref, stream = reference_and_stream(syn, ref_size=2000)
+    ref, stream = reference_and_stream(syn)
     t0 = 4000
     n = len(num) + len(cat)
     print(f"{len(num)} numeric + {len(cat)} categorical columns "

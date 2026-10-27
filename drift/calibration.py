@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from drift.data import column_types, load_synthetic, reference_and_stream
+from drift.data import REF_SIZE, column_types, load_synthetic, reference_and_stream
 from drift.detectors import run_on_numeric
 from drift.evaluation import evaluate_alarms
 from drift.injection import inject_sudden, shift_in_std
@@ -23,7 +23,6 @@ from drift.window_tests import window_tests
 
 OUT = Path("results/drift")
 SEEDS = [1, 2, 3, 4, 5]
-REF_SIZE = 2000
 T0 = 4000                       # change point of the reference drift
 
 
