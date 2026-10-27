@@ -22,15 +22,6 @@ so the same parameters work for every column (a shift of 1 = 1 std).
 import numpy as np
 from river import drift
 
-# Page-Hinkley defaults: delta ~ half the smallest shift (in std) we want to
-# catch; threshold chosen on drift-free data to keep false alarms rare.
-""" This was before changing the Among the settings with 0 false alarms, δ = 0.25, λ = 50 
-is the fastest: about 35% quicker with no extra false alarms.
- DEFAULTS = {
-    "adwin": {"delta": 0.002},
-    "page_hinkley": {"min_instances": 30, "delta": 0.1, "threshold": 100.0},
-}
-"""
 # Page-Hinkley defaults chosen with drift/calibration.py: among the settings
 # with no false alarms on drift-free data, delta=0.25 / threshold=50 had the
 # shortest delay (results/drift/calibration_grid.csv).
