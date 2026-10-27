@@ -22,13 +22,13 @@ so the same parameters work for every column (a shift of 1 = 1 std).
 import numpy as np
 from river import drift
 
-# Page-Hinkley defaults: delta ~ half the smallest shift (in std) we want to
-# catch; threshold chosen on drift-free data to keep false alarms rare.
+# Page-Hinkley defaults chosen with drift/calibration.py: among the settings
+# with no false alarms on drift-free data, delta=0.25 / threshold=50 had the
+# shortest delay (results/drift/calibration_grid.csv).
 DEFAULTS = {
     "adwin": {"delta": 0.002},
-    "page_hinkley": {"min_instances": 30, "delta": 0.1, "threshold": 100.0},
+    "page_hinkley": {"min_instances": 30, "delta": 0.25, "threshold": 50.0},
 }
-
 
 def make_detector(name, **params):
     """Create a fresh detector; `params` override the defaults."""
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     syn = load_synthetic("adult")
     num, _ = column_types("adult", syn)
-    ref, stream = reference_and_stream(syn, ref_size=2000)
+    ref, stream = reference_and_stream(syn)
     t0 = 4000
 
     print("No drift (every alarm is a false alarm):")
