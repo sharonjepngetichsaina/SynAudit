@@ -69,5 +69,44 @@ services:
       DYNAMIC_CONFIG_ENABLED: "true"
     restart: unless-stopped
 
+  influxdb:
+    image: influxdb:2.7
+    container_name: synaudit-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: synaudit123
+      DOCKER_INFLUXDB_INIT_ORG: synaudit
+      DOCKER_INFLUXDB_INIT_BUCKET: synaudit
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: synaudit-dev-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: dashboard/Dockerfile
+    container_name: synaudit-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   kafka-data:
+  influxdb-data:
