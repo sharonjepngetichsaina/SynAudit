@@ -5,8 +5,7 @@ train-on-synthetic, test-on-real (TSTR) compared with train-on-real,
 test-on-real (TRTR).
 
 ## Algorithm
-
-**Hoeffding tree**: A decision tree that learns from one record at a time, so it never needs the whole dataset in memory. Implemented with  `river.tree.HoeffdingTreeClassifier`.
+**Hoeffding tree** (Domingos and Hulten, 2000, "Mining High-Speed Data Streams", Proc. KDD 2000, pp. 71-80). A decision tree that learns from one record at a time, so it never needs the whole dataset in memory. Implemented with  `river.tree.HoeffdingTreeClassifier`.
 
 ## How it works
 
