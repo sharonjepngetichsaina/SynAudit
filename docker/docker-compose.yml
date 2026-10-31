@@ -69,5 +69,96 @@ services:
       DYNAMIC_CONFIG_ENABLED: "true"
     restart: unless-stopped
 
+  influxdb:
+    image: influxdb:2.7
+    container_name: synaudit-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: synaudit123
+      DOCKER_INFLUXDB_INIT_ORG: synaudit
+      DOCKER_INFLUXDB_INIT_BUCKET: synaudit
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: synaudit-dev-token
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: dashboard/Dockerfile
+    container_name: synaudit-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  quality-adult:
+    build:
+      context: ..
+      dockerfile: quality/Dockerfile
+    container_name: synaudit-quality-adult
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      influxdb:
+        condition: service_healthy
+    environment:
+      DATASET: adult
+      KAFKA_BOOTSTRAP: kafka:9092
+      QUALITY_WINDOW: "500"
+      QUALITY_STEP: "100"
+      QUALITY_SDMETRICS_EVERY: "5"
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    volumes:
+      - ../results:/app/results
+    restart: unless-stopped
+
+  quality-credit-default:
+    build:
+      context: ..
+      dockerfile: quality/Dockerfile
+    container_name: synaudit-quality-credit-default
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      influxdb:
+        condition: service_healthy
+    environment:
+      DATASET: credit-default
+      KAFKA_BOOTSTRAP: kafka:9092
+      QUALITY_WINDOW: "500"
+      QUALITY_STEP: "100"
+      QUALITY_SDMETRICS_EVERY: "10"
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    volumes:
+      - ../results:/app/results
+    restart: unless-stopped
+
 volumes:
   kafka-data:
+  influxdb-data:
