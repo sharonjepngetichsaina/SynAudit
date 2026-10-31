@@ -21,6 +21,7 @@ Each one keeps its own result format; `storage/db.py` takes it as it is.
 | Grace (drift) | `db.write_drift_rows(window_tests(...))` | `drift_events` |
 | Sharon (utility) | `db.write_utility_rows(df)`, df with the columns of `adult-utility.csv` | `utility` (+ `utility_ratio` = bal_acc_synthetic / bal_acc_real) |
 | Sharon (privacy) | `db.write_privacy_rows(df)`, df with the columns of `adult-copies.csv` | `privacy` |
+| Alina (sketches) | `python -m sketches.sketch_service --dataset adult` (see `sketches/README.md`) | `sketches`, `sketch_freq` |
 | Matilda (DGIM) | `db.write_dgim_snapshot(payload)`, next to `write_snapshot` | `dgim` (one point per tracked condition) |
 
 Add `from storage import db` at the top and `influxdb-client` to your requirements.

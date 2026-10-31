@@ -40,12 +40,15 @@ DRIFT = "drift_events"                      # Grace
 UTILITY = "utility"                         # Sharon
 PRIVACY = "privacy"                         # Sharon
 DGIM = "dgim"                               # Matilda
-MEASUREMENTS = (QUALITY, COLUMN_QUALITY, DRIFT, UTILITY, PRIVACY, DGIM)
+SKETCHES = "sketches"                       # Alina: HLL / CMS accuracy per column
+SKETCH_FREQ = "sketch_freq"                 # Alina: category shares, real vs synthetic
+MEASUREMENTS = (QUALITY, COLUMN_QUALITY, DRIFT, UTILITY, PRIVACY, DGIM, SKETCHES, SKETCH_FREQ)
 
 # Counters are stored as integers. InfluxDB refuses a field whose type changes,
 # so these are always written as int, everything else as float.
 INT_FIELDS = {"window_id", "window", "n_real", "n_synth", "start", "end",
-              "rows_seen", "records_seen", "alarm"}
+              "rows_seen", "records_seen", "alarm", "hll_exact",
+              "hll_memory_bytes", "cms_memory_bytes", "exact_memory_bytes"}
 
 _client = None
 
