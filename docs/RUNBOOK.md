@@ -2,7 +2,7 @@
 
 Owner: Diana
 
-Generates synthetic Adult and Credit Default datasets and evaluates their statistical and structural quality. The datasets contain 10,000 original records and 30,000 generated records each. Quality evaluation combines batch statistical comparisons with streaming monitoring, including CluStream and DenStream clustering algorithms. Results are written to CSV and can also be stored in InfluxDB for dashboard visualization.
+Generates synthetic Adult and Credit Default datasets and evaluates their statistical and structural quality. Each dataset combines 10,000 original records with 30,000 generated records. The quality-monitoring component supports batch evaluation and streaming analysis, including the use of CluStream and DenStream to examine changes in data distributions and clustering structure.
 
 ---
 
@@ -34,21 +34,21 @@ pip install -r requirements.txt
 
 **1. Generate synthetic datasets.**
 
-The generator uses the processed Adult and Credit Default datasets to create 30,000 synthetic records for each dataset.
+Generate 30,000 synthetic records for each dataset using the original processed Adult and Credit Default data.
 
 ```bash
-python scripts/generate_synthetic.py
+python generate_synthetic.py
 ```
 
-The resulting datasets contain 40,000 records each, combining the original and generated records.
+Each resulting dataset contains 40,000 records: 10,000 original and 30,000 generated.
 
 **2. Run batch quality evaluation.**
 
-```bash
-python scripts/evaluate_quality.py
-```
+Run the project's quality evaluation process to compare the synthetic datasets against their original counterparts.
 
-The evaluation compares synthetic and original data using statistical similarity, distribution, correlation, and consistency metrics.
+```bash
+python evaluate_quality.py
+```
 
 **3. Start the monitoring infrastructure.**
 
@@ -57,8 +57,6 @@ From the project root:
 ```bash
 docker compose -f docker/docker-compose.yml up -d --build
 ```
-
-This starts the Kafka environment, InfluxDB, quality-monitoring services, and dashboard.
 
 **4. Check the running services.**
 
@@ -73,55 +71,54 @@ docker compose -f docker/docker-compose.yml logs -f quality-adult
 docker compose -f docker/docker-compose.yml logs -f quality-credit-default
 ```
 
-**5. Open the dashboard.**
-
-[http://localhost:8501](http://localhost:8501)
-
 ---
 
 ## What this produces
 
-| Output | Written by | Contents |
-|---|---|---|
-| Synthetic Adult dataset | `scripts/generate_synthetic.py` | Original and generated Adult records |
-| Synthetic Credit Default dataset | `scripts/generate_synthetic.py` | Original and generated Credit Default records |
-| Batch quality results | `scripts/evaluate_quality.py` | Statistical and structural comparison metrics |
-| `results/stream/*-windows.csv` | Streaming quality services | Quality metrics calculated over streaming windows |
-| InfluxDB measurements | Quality-monitoring services | Stored quality metrics for dashboard use |
-| Dashboard | `dashboard/` | Visualization of monitoring results |
+| Output | Contents |
+|---|---|
+| Synthetic Adult dataset | Original and generated Adult records |
+| Synthetic Credit Default dataset | Original and generated Credit Default records |
+| `adult-numeric-quality.csv` | Numerical quality evaluation |
+| `adult-categorical-quality.csv` | Categorical quality evaluation |
+| `adult-correlation-difference.csv` | Correlation differences |
+| `adult-consistency.csv` | Data consistency evaluation |
+| `adult-sdmetrics.csv` | SDMetrics evaluation |
+| `adult-summary.json` | Summary of Adult quality results |
+| Credit Default evaluation files | Numerical, correlation, SDMetrics, and summary results |
+
+Batch evaluation files are stored in `results/`.
 
 ---
 
 ## Streaming algorithms
 
-**CluStream** — an online clustering algorithm designed for evolving data streams. It maintains compact micro-cluster summaries and supports the analysis of changing data distributions. In SynAudit, it is used to calculate clustering-based monitoring indicators, including cluster counts, centroid distances, membership-distribution differences, and coverage.
+**CluStream** — an online clustering algorithm for evolving data streams. It maintains compact micro-cluster summaries and helps identify changes in data distributions. In SynAudit, it provides clustering-based monitoring indicators, including cluster counts, centroid distances, membership-distribution differences, and coverage.
 
-**DenStream** — a density-based clustering algorithm for evolving data streams. It maintains potential and outlier micro-clusters to represent dense regions and emerging patterns. In SynAudit, its monitoring indicators include potential-cluster and outlier counts, as well as clustering coverage.
+**DenStream** — a density-based clustering algorithm for evolving data streams. It maintains potential and outlier micro-clusters to represent dense regions and emerging patterns. Its monitoring indicators include potential-cluster and outlier counts, as well as clustering coverage.
 
-Both algorithms are implemented in `quality/clustering.py` and used by `quality/monitor.py` during sliding-window evaluation. Their results complement the statistical quality metrics and provide an additional view of how synthetic data behaves over time.
+Both algorithms are part of the streaming quality-monitoring component. They complement statistical quality metrics by examining the evolving structure of incoming data.
 
 ---
 
 ## Quality monitoring
 
-**Batch evaluation** compares synthetic datasets against their original counterparts using statistical similarity, correlation, distribution, and consistency measurements.
+**Batch evaluation** compares synthetic datasets with original data using numerical, categorical, correlation, consistency, and SDMetrics-based evaluations.
 
-**Streaming evaluation** calculates quality metrics over successive data windows, allowing changes in the incoming data to be monitored.
+**Streaming evaluation** processes incoming records in windows to monitor changes in data quality over time.
 
-**Clustering-based evaluation** uses CluStream and DenStream to examine the evolving structure and distribution of streaming records.
+**Clustering-based monitoring** uses CluStream and DenStream to analyse changes in the structure and distribution of streaming records.
 
-**Storage integration** supports CSV output and InfluxDB storage of monitoring results.
-
-**Dashboard integration** provides a visual interface for exploring the stored quality metrics.
+**Storage** supports CSV output and InfluxDB integration in the quality-monitoring implementation.
 
 ---
 
 ## Implementation and verification notes
 
-- Adult and Credit Default synthetic datasets: 40,000 records each (10,000 original and 30,000 generated).
+- Generated 30,000 additional records for each dataset.
+- Batch quality evaluation results are available under `results/`.
 - Docker Compose configuration validated successfully.
-- Dashboard and quality-monitoring Docker images built successfully.
+- Dashboard and quality-monitoring Docker images built successfully in the local environment.
 - Python modules compiled successfully.
 - Sketch tests passed: 4 tests.
-- Dashboard and supporting services started successfully.
 - Full end-to-end Kafka processing and InfluxDB data flow remain subject to verification.
