@@ -1,0 +1,37 @@
+# Sketch service (Alina). Paste under `services:` in docker/docker-compose.yml.
+
+  sketches-adult:
+    build:
+      context: ..
+      dockerfile: sketches/Dockerfile
+    container_name: synaudit-sketches-adult
+    command: ["--dataset", "adult", "--bootstrap", "kafka:9092"]
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    depends_on:
+      kafka:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sketches-credit-default:
+    build:
+      context: ..
+      dockerfile: sketches/Dockerfile
+    container_name: synaudit-sketches-credit-default
+    command: ["--dataset", "credit-default", "--bootstrap", "kafka:9092"]
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    depends_on:
+      kafka:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    restart: unless-stopped
