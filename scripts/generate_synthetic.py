@@ -18,6 +18,7 @@ default model cannot handle on its own:
 Usage (from the project root):
     python scripts/generate_synthetic.py --dataset adult --num-rows 10000
     python scripts/generate_synthetic.py --dataset credit-default --num-rows 10000
+    python scripts/generate_synthetic.py --dataset adult --num-rows 30000 --append
 """
 import argparse
 from pathlib import Path
@@ -101,7 +102,7 @@ def quality_check(real_data, synthetic_data, derived, zero_inflated):
         print(f"  {src} -> {dst} consistent in {ok:.1%} of synthetic rows")
 
 
-def generate_synthetic_dataset(dataset_name, num_rows, seed=None):
+def generate_synthetic_dataset(dataset_name, num_rows, seed=None, append=False):
     # SDV is imported here so the helper functions above can be tested without it.
     from sdv.metadata import Metadata
     from sdv.single_table import GaussianCopulaSynthesizer
@@ -165,7 +166,19 @@ def generate_synthetic_dataset(dataset_name, num_rows, seed=None):
     if set(synthetic_data.columns) != set(real_data.columns):
         raise ValueError("Generated columns do not match real data columns.")
 
-    synthetic_data.to_csv(output_path, index=False)
+    if append and output_path.exists():
+        existing_data = pd.read_csv(output_path)
+        if list(existing_data.columns) != list(real_data.columns):
+            raise ValueError(
+                f"Existing synthetic schema in {output_path} does not match the processed dataset."
+            )
+        synthetic_data = pd.concat([existing_data, synthetic_data], ignore_index=True)
+
+    # Write to a sibling temporary file first so an interrupted write cannot
+    # leave the existing synthetic dataset truncated.
+    temporary_path = output_path.with_suffix(".csv.tmp")
+    synthetic_data.to_csv(temporary_path, index=False)
+    temporary_path.replace(output_path)
 
     print("\nGeneration successful!")
     print(f"Real data shape: {real_data.shape}")
@@ -180,12 +193,17 @@ def main():
     parser.add_argument("--dataset", choices=["adult", "credit-default"], required=True)
     parser.add_argument("--num-rows", type=int, default=10000)
     parser.add_argument("--seed", type=int, default=None, help="for reproducible output")
+    parser.add_argument(
+        "--append",
+        action="store_true",
+        help="append generated rows to the existing synthetic CSV instead of replacing it",
+    )
     args = parser.parse_args()
 
     if args.num_rows <= 0:
         parser.error("--num-rows must be greater than zero")
 
-    generate_synthetic_dataset(args.dataset, args.num_rows, args.seed)
+    generate_synthetic_dataset(args.dataset, args.num_rows, args.seed, args.append)
 
 
 if __name__ == "__main__":

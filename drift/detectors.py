@@ -22,12 +22,12 @@ so the same parameters work for every column (a shift of 1 = 1 std).
 import numpy as np
 from river import drift
 
-# Page-Hinkley defaults chosen with drift/calibration.py: among the settings
-# with no false alarms on drift-free data, delta=0.25 / threshold=50 had the
-# shortest delay (results/drift/calibration_grid.csv).
+# Page-Hinkley defaults chosen with drift/calibration.py on 40,000 synthetic
+# records: among the settings with no false alarms on drift-free data,
+# delta=0.1 / threshold=200 had the shortest delay (results/drift/calibration_grid.csv).
 DEFAULTS = {
     "adwin": {"delta": 0.002},
-    "page_hinkley": {"min_instances": 30, "delta": 0.25, "threshold": 50.0},
+    "page_hinkley": {"min_instances": 30, "delta": 0.1, "threshold": 200.0},
 }
 
 def make_detector(name, **params):
