@@ -122,6 +122,15 @@ def write_snapshot(
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, indent=2))
     tmp.replace(path)
+    # --- save to InfluxDB for the dashboard (Alina, integration) ---
+    try:
+        root = str(Path(__file__).resolve().parents[1])
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from storage import db
+        db.write_dgim_snapshot(payload)
+    except Exception as e:
+        print(f"InfluxDB not available: {e}")
 
 
 def main() -> None:

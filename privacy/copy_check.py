@@ -73,6 +73,16 @@ def main():
     pd.DataFrame(results).to_csv(out_path, index=False)
     print(f"Saved {len(results)} windows to {out_path}")
 
+    # --- save to InfluxDB for the dashboard (Alina, integration) ---
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from storage import db
+        db.write_privacy_rows(pd.DataFrame(results))
+        print("Saved privacy results to InfluxDB")
+    except Exception as e:
+        print(f"InfluxDB not available, CSV only: {e}")
+
 
 if __name__ == "__main__":
     main()
