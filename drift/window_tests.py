@@ -124,3 +124,16 @@ if __name__ == "__main__":
     print(mar.to_string(index=False, float_format=lambda x: f"{x:.4f}"))
     others = res[(res["column"] != col) & (res["alarm"] == 1)]
     print(f"\nAlarms in the other (unchanged) columns: {len(others)}")
+
+
+
+    # --- save to InfluxDB for the dashboard (Alina, integration) ---
+    try:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from storage import db
+        db.write_drift_rows(res)
+        print("Saved drift results to InfluxDB")
+    except Exception as e:
+        print(f"InfluxDB not available: {e}")
