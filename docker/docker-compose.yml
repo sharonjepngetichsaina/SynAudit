@@ -195,6 +195,120 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+
+  # --- team jobs (Alina, integration) ---
+  dgim-adult-real:
+    build: { context: .., dockerfile: docker/jobs.Dockerfile }
+    image: synaudit-jobs:latest
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "ingestion/dgim_service.py", "--dataset", "adult", "--source", "real", "--bootstrap", "kafka:9092", "--idle-timeout", "0"]
+    environment: &influx_env
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: synaudit-dev-token
+      INFLUX_ORG: synaudit
+      INFLUX_BUCKET: synaudit
+    depends_on:
+      kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      influxdb: { condition: service_healthy }
+    restart: unless-stopped
+
+  dgim-adult-synthetic:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "ingestion/dgim_service.py", "--dataset", "adult", "--source", "synthetic", "--bootstrap", "kafka:9092", "--idle-timeout", "0"]
+    environment: *influx_env
+    depends_on:
+      kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      influxdb: { condition: service_healthy }
+    restart: unless-stopped
+
+  utility-adult:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "utility/tstr.py", "--dataset", "adult"]
+    environment: *influx_env
+    depends_on:
+      influxdb: { condition: service_healthy }
+    restart: "no"
+
+  privacy-adult:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "privacy/copy_check.py", "--dataset", "adult"]
+    environment: *influx_env
+    depends_on:
+      influxdb: { condition: service_healthy }
+    restart: "no"
+
+  drift-adult:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "-m", "drift.window_tests"]
+    environment: *influx_env
+    depends_on:
+      influxdb: { condition: service_healthy }
+    restart: "no"
+
+  # --- credit-default jobs (Alina, integration) ---
+  dgim-credit-default-real:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "ingestion/dgim_service.py", "--dataset", "credit-default", "--source", "real", "--bootstrap", "kafka:9092", "--idle-timeout", "0"]
+    environment: *influx_env
+    depends_on:
+      kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      influxdb: { condition: service_healthy }
+    restart: unless-stopped
+
+  dgim-credit-default-synthetic:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "ingestion/dgim_service.py", "--dataset", "credit-default", "--source", "synthetic", "--bootstrap", "kafka:9092", "--idle-timeout", "0"]
+    environment: *influx_env
+    depends_on:
+      kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      influxdb: { condition: service_healthy }
+    restart: unless-stopped
+
+  utility-credit-default:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "utility/tstr.py", "--dataset", "credit-default"]
+    environment: *influx_env
+    depends_on:
+      influxdb: { condition: service_healthy }
+    restart: "no"
+
+  privacy-credit-default:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    command: ["python", "privacy/copy_check.py", "--dataset", "credit-default"]
+    environment: *influx_env
+    depends_on:
+      influxdb: { condition: service_healthy }
+    restart: "no"
+
 volumes:
   kafka-data:
   influxdb-data:
