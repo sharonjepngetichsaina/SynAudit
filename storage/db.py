@@ -96,6 +96,18 @@ def _send(points) -> None:
     client().write_api(write_options=SYNCHRONOUS).write(bucket=BUCKET, org=ORG, record=points)
 
 
+def _clear_previous(measurement: str, df) -> None:
+    """Delete earlier rows of the same dataset(s), so a re-run replaces results instead of duplicating them."""
+    try:
+        datasets = sorted(set(df["dataset"])) if "dataset" in df else []
+        api = client().delete_api()
+        for ds in datasets:
+            api.delete("1970-01-01T00:00:00Z", datetime.now(timezone.utc),
+                       f'_measurement="{measurement}" AND dataset="{ds}"', bucket=BUCKET, org=ORG)
+    except Exception as e:
+        print(f"could not clear old {measurement} rows: {e}")
+
+
 def write(measurement: str, tags: dict, fields: dict, time=None) -> None:
     """Low-level: one point. Tags are labels to filter by, fields are values."""
     _send(_point(measurement, dict(tags), fields, time))
@@ -117,6 +129,7 @@ def write_drift(window_id, dataset, column, detector, statistic=None, p_value=No
 
 
 def write_drift_rows(df, run_id=None) -> int:
+    _clear_previous(DRIFT, df)
     """All rows of window_tests(...) at once. Returns rows written."""
     pts = [_point(DRIFT, {"run_id": run_id, "dataset": r["dataset"], "column": r["column"],
                           "detector": r["detector"]},
@@ -147,6 +160,7 @@ def write_utility(window, dataset, run_id=None, **values):
 
 
 def write_utility_rows(df, run_id=None) -> int:
+    _clear_previous(UTILITY, df)
     pts = [_point(UTILITY, {"run_id": run_id, "dataset": r["dataset"]}, _utility_fields(r))
            for r in df.to_dict("records")]
     if pts:
@@ -160,6 +174,7 @@ def write_privacy(window, dataset, run_id=None, **values):
 
 
 def write_privacy_rows(df, run_id=None) -> int:
+    _clear_previous(PRIVACY, df)
     pts = [_point(PRIVACY, {"run_id": run_id, "dataset": r["dataset"]},
                   {k: r.get(k) for k in PRIVACY_FIELDS}) for r in df.to_dict("records")]
     if pts:

@@ -1,4 +1,9 @@
-"""Sketches for every categorical column of one stream, plus exact counts to measure their error."""
+"""Sketches for every categorical column of one stream, plus exact counts to measure their error.
+
+Categorical = string values, or integer codes with few distinct values
+(e.g. SEX=1/2, EDUCATION=1..6 in credit-default). Integer columns with more
+than MAX_INT_CATEGORIES distinct values (amounts, ages) are dropped.
+"""
 from __future__ import annotations
 
 import sys
@@ -6,6 +11,8 @@ from collections import Counter
 
 from sketches.count_min import CountMinSketch
 from sketches.hyperloglog import HyperLogLog
+
+MAX_INT_CATEGORIES = 30
 
 
 class ColumnSketches:
@@ -20,6 +27,9 @@ class ColumnSketches:
         if self.exact is not None:
             self.exact[value] += 1
 
+    def distinct(self) -> float:
+        return len(self.exact) if self.exact is not None else self.hll.estimate()
+
 
 class StreamSketches:
     """All categorical columns of one (dataset, source) stream."""
@@ -27,13 +37,27 @@ class StreamSketches:
     def __init__(self, cms_width=272, cms_depth=5, hll_precision=10, exact=True):
         self.args = (cms_width, cms_depth, hll_precision, exact)
         self.columns: dict[str, ColumnSketches] = {}
+        self.dropped: set[str] = set()
         self.n = 0
 
     def update(self, payload: dict) -> None:
         self.n += 1
         for col, value in payload.items():
-            if isinstance(value, str):                # categorical columns are JSON strings (stream contract)
-                self.columns.setdefault(col, ColumnSketches(*self.args)).update(value)
+            if col in self.dropped or value is None:
+                continue
+            if isinstance(value, str):                     # text category (stream contract)
+                key, coded = value, False
+            elif isinstance(value, int):                   # integer code, e.g. SEX=1
+                key, coded = str(value), True
+            elif isinstance(value, float) and value.is_integer():
+                key, coded = str(int(value)), True
+            else:
+                continue
+            c = self.columns.setdefault(col, ColumnSketches(*self.args))
+            c.update(key)
+            if coded and c.distinct() > MAX_INT_CATEGORIES:  # too many values: not categorical
+                del self.columns[col]
+                self.dropped.add(col)
 
     def summary(self, column: str) -> dict:
         """Distinct count (HLL) and frequency-error (CMS) for one column, against exact counts."""
