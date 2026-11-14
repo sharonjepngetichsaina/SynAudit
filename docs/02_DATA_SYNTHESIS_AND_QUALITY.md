@@ -1,8 +1,8 @@
-# Synthetic data generation and quality monitoring
+# Data synthesis and quality evaluation
 
 Owner: Diana
 
-Generates synthetic Adult and Credit Default datasets and evaluates their statistical and structural quality. Each dataset combines 10,000 original records with 30,000 generated records. The quality-monitoring component supports batch evaluation and streaming analysis, including the use of CluStream and DenStream to examine changes in data distributions and clustering structure.
+Generates synthetic Adult and Credit Default datasets and evaluates their statistical and structural quality. Each synthetic dataset contains 40,000 generated records with no duplicate rows. The quality-monitoring component supports batch evaluation and streaming analysis, including the use of CluStream and DenStream to examine changes in data distributions and clustering structure.
 
 ---
 
@@ -16,6 +16,12 @@ On Windows:
 
 ```bash
 .venv\Scripts\activate
+```
+
+Git Bash:
+
+```bash
+source .venv/Scripts/activate
 ```
 
 On Linux/macOS:
@@ -32,22 +38,29 @@ pip install -r requirements.txt
 
 ## Running it
 
-**1. Generate synthetic datasets.**
+**0. Prerequisite: real data.**
 
-Generate 30,000 synthetic records for each dataset using the original processed Adult and Credit Default data.
+The generator reads `data/processed/<dataset>.csv`, created by the ingestion step:
 
 ```bash
-python generate_synthetic.py
+python ingestion/download_data.py
+python ingestion/preprocess.py
 ```
 
-Each resulting dataset contains 40,000 records: 10,000 original and 30,000 generated.
+**1. Generate synthetic datasets.**
+
+```bash
+python scripts/generate_synthetic.py --dataset adult --num-rows 40000 --seed 42
+python scripts/generate_synthetic.py --dataset credit-default --num-rows 40000 --seed 42
+```
 
 **2. Run batch quality evaluation.**
 
 Run the project's quality evaluation process to compare the synthetic datasets against their original counterparts.
 
 ```bash
-python evaluate_quality.py
+python scripts/evaluate_quality.py --dataset adult
+python scripts/evaluate_quality.py --dataset credit-default
 ```
 
 **3. Start the monitoring infrastructure.**
@@ -77,8 +90,8 @@ docker compose -f docker/docker-compose.yml logs -f quality-credit-default
 
 | Output | Contents |
 |---|---|
-| Synthetic Adult dataset | Original and generated Adult records |
-| Synthetic Credit Default dataset | Original and generated Credit Default records |
+| `data/synthetic/adult-synthetic.csv` | 40,000 generated Adult records, no duplicates |
+| `data/synthetic/credit-default-synthetic.csv` | 40,000 generated Credit Default records, no duplicates |
 | `adult-numeric-quality.csv` | Numerical quality evaluation |
 | `adult-categorical-quality.csv` | Categorical quality evaluation |
 | `adult-correlation-difference.csv` | Correlation differences |
@@ -115,7 +128,7 @@ Both algorithms are part of the streaming quality-monitoring component. They com
 
 ## Implementation and verification notes
 
-- Generated 30,000 additional records for each dataset.
+- Generated 40,000 unique synthetic records for each dataset.
 - Batch quality evaluation results are available under `results/`.
 - Docker Compose configuration validated successfully.
 - Dashboard and quality-monitoring Docker images built successfully in the local environment.

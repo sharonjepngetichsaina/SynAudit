@@ -1,9 +1,9 @@
 # Build from the project root:  docker build -f quality/Dockerfile -t synaudit-quality .
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 WORKDIR /app
-COPY quality/requirements.txt quality/requirements.txt
-RUN pip install --no-cache-dir -r quality/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY quality/ quality/
 # column types and ranges come from the SDV metadata written by generate_synthetic.py

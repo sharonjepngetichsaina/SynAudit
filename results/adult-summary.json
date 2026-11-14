@@ -1,16 +1,18 @@
 {
   "dataset": "adult",
   "rows_real": 48842,
-  "rows_synthetic": 10000,
-  "smd_mean": 0.0059508224843296,
-  "smd_max": 0.009448646630282265,
-  "tvd_mean": 0.00780174212540208,
-  "corr_diff_mean": 0.05526913457765584,
-  "zero_gap_max": 0.0035866754023177183,
+  "rows_synthetic": 40000,
+  "smd_mean": 0.006782485381016669,
+  "smd_max": 0.015064023128918098,
+  "tvd_mean": 0.0042403146881781935,
+  "corr_diff_mean": 0.05821694647673148,
+  "zero_gap_max": 0.001336675402317633,
   "consistency": {
-    "education->education_num": 1.0
+    "education->education_num": 1.0,
+    "relationship->sex": 1.0,
+    "relationship->marital_status": 1.0
   },
-  "sdmetrics_overall": 0.8978543808224861,
-  "sdmetrics_column_shapes": 0.9691472795661813,
-  "sdmetrics_column_pair_trends": 0.826561482078791
+  "sdmetrics_overall": 0.9381038107346362,
+  "sdmetrics_column_shapes": 0.9719897942052215,
+  "sdmetrics_column_pair_trends": 0.9042178272640509
 }

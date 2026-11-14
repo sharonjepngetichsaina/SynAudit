@@ -56,7 +56,7 @@ def source_path(dataset: str, source: str) -> Path:
     """Real data comes from data/processed/, synthetic from data/synthetic/."""
     if source == "real":
         return PROCESSED / f"{dataset}.csv"
-    return Path("data/synthetic") / f"{dataset}.csv"
+    return Path("data/synthetic") / f"{dataset}-synthetic.csv"
 
 
 def clean_value(value):

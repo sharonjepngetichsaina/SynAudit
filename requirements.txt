@@ -1,7 +1,21 @@
-ucimlrepo>=0.0.7
-pandas>=2.2
-kafka-python-ng>=2.2
+# --- core data ---
 numpy>=1.26
+pandas>=2.2,<2.3
 scipy>=1.11
-river>=0.21
+scikit-learn>=1.4
+
+# --- ingestion & streaming ---
+ucimlrepo>=0.0.7
+kafka-python-ng>=2.2
 influxdb-client==1.46.0
+river>=0.21
+
+# --- quality metrics (no PyTorch) ---
+sdmetrics>=0.14
+
+# --- drift plots ---
+matplotlib>=3.8
+
+# --- dashboard ---
+streamlit==1.39.0
+plotly==5.24.1

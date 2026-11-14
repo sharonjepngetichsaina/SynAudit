@@ -48,7 +48,7 @@ def records_from_csv(dataset: str):
     import pandas as pd
 
     frames = {"real": pd.read_csv(f"data/processed/{dataset}.csv"),
-              "synthetic": pd.read_csv(f"data/synthetic/{dataset}.csv")}
+              "synthetic": pd.read_csv(f"data/synthetic/{dataset}-synthetic.csv")}
     iters = {s: df.where(df.notna(), None).to_dict("records") for s, df in frames.items()}
     for i in range(max(len(v) for v in iters.values())):
         for source in SOURCES:
