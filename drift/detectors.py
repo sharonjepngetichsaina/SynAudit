@@ -23,8 +23,8 @@ import numpy as np
 from river import drift
 
 # Page-Hinkley defaults chosen with drift/calibration.py on 40,000 synthetic
-# records: among the settings with no false alarms on drift-free data,
-# delta=0.1 / threshold=200 had the shortest delay (results/drift/calibration_grid.csv).
+# records: among the settings with at most one false alarm per run on drift-free
+# data, delta=0.1 / threshold=200 had the shortest delay (results/drift/calibration_grid.csv).  
 DEFAULTS = {
     "adwin": {"delta": 0.002},
     "page_hinkley": {"min_instances": 30, "delta": 0.1, "threshold": 200.0},

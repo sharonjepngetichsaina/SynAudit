@@ -72,7 +72,7 @@ def fig_example():
     ax.plot(win["end"], win["p_value"].clip(lower=1e-30), marker="o", ms=3.5, lw=1.5,
             color=COLORS["ks"])
     ax.axhline(threshold, color="#d03b3b", lw=1, ls="--")
-    ax.text(0, threshold * 2.5, f"alarm threshold p < {threshold:.4f}", fontsize=8.5,
+    ax.text(0, threshold / 40, f"alarm threshold p < {threshold:.4f}", fontsize=8.5,
             color="#52514e")
     ax.set_yscale("log")
     ax.set_ylabel("KS p-value\n(log scale)")

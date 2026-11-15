@@ -221,6 +221,115 @@ The trade-off is that column pair trends fell from 0.92 to 0.84, so the overall 
 
 ## 6. Drift detection (Grace)
 
+**Question.** Does the synthetic stream stay stable over time, and if it changes, how quickly does the system notice?
+
+A stream drifts when the distribution behind the records changes partway through. For a synthetic-data monitor, a drift alarm means that later batches from the generator no longer look like the earlier ones, so quality numbers measured at the start can no longer be trusted.
+
+### 6.1 Method
+
+Two families of detectors run side by side, because they answer different questions.
+
+**Window tests (batch view).** The first 4,000 synthetic records form the *reference sample* (what "normal" looks like). The rest of the stream is cut into windows of 500 records, and each window is compared with the reference, column by column:
+
+- numeric columns: two-sample Kolmogorov-Smirnov (KS) test
+- categorical columns: chi-square test of homogeneity (rare categories under 1% are merged)
+
+Adult has 13 tested columns (5 numeric, 8 categorical), so the significance level is Bonferroni-corrected: a column raises an alarm when p < 0.05 / 13 = 0.0038.
+
+**Record-level change detectors (streaming view).** These read one value at a time and keep a memory, so evidence of a change builds up between windows. Values are standardised with the reference mean and standard deviation, so one set of parameters works for every column.
+
+- **ADWIN** (Bifet & Gavaldà, 2007) keeps an adaptive window of recent values and drops the older part when the means of the old and new parts differ by more than a bound set by δ.
+- **Page-Hinkley** (Page, 1954) accumulates deviations from the running mean, minus a tolerance δ, and signals a change when the sum rises more than λ above its minimum.
+
+Column types (numeric or categorical) come from the SDV metadata file, so the detectors treat each column the same way the generator does.
+
+### 6.2 Calibration on drift-free data
+
+Every detector trades speed against false alarms. To choose parameters, `drift/calibration.py` runs each setting on the drift-free synthetic stream (5 seeds, 40,000 records) and on the same stream with a +0.5 std shift in `age`.
+
+![Calibration trade-off](results/drift/figures/fig2_calibration_tradeoff.png)
+
+*Figure 6.1. Each point is one parameter setting. Lower is fewer false alarms; further left is faster detection. The chosen settings sit at the bottom of the curve.*
+
+| Detector | Chosen setting | False alarms per run (5 columns, drift-free) | Mean delay, +0.5 std shift |
+|---|---|---|---|
+| ADWIN | δ = 0.002 | 0.2 | 133 records |
+| Page-Hinkley | δ = 0.1, λ = 200 | 0.4 | 533 records |
+
+Selection rule: at most one false alarm per run, then the shortest delay. ADWIN δ = 0.0002 removes the last false alarm but is 20% slower (159 records). Page-Hinkley δ = 0.25, λ = 200 has no false alarms but is 37% slower (729 records). In both cases we kept the faster setting, because a fraction of a false alarm per 36,000 records is cheaper than reacting hundreds of records later.
+
+With these defaults, the false-alarm rate on drift-free data is 0.01 (ADWIN), 0.02 (Page-Hinkley), 0.03 (KS) and 0.10 (chi-square) alarms per 10,000 records per column.
+
+### 6.3 Experiment E3: injected drift
+
+`drift/experiment.py` injects known changes into the Adult synthetic stream and measures whether and how fast each detector finds them. Each seed shuffles the data and places the change point t0 at a random record, so t0 does not line up with window boundaries (which would favour the window tests). A detection counts only if it falls within 2,000 records after t0.
+
+- **Numeric drift** in `age` and `hours_per_week`: sudden, or gradual (new values take over across 2,000 records), with sizes 0.1, 0.25, 0.5 and 1.0 std. 10 seeds × 2 columns = 20 runs per cell.
+- **Categorical drift** in `marital_status`: 10%, 20% or 30% of `Married-civ-spouse` records relabelled as `Never-married`. 10 runs per cell.
+
+![Example of a sudden drift](results/drift/figures/fig1_example_sudden_drift.png)
+
+*Figure 6.2. A sudden +0.5 std shift in `age` (about 7 years). ADWIN fires almost at once and Page-Hinkley about 400 records later, and both then reset. The KS test fires on every window after t0, because it keeps comparing each window with the pre-drift reference.*
+
+![Detection rate](results/drift/figures/fig3_detection_rate.png)
+
+*Figure 6.3. Share of runs where the drift was found within 2,000 records.*
+
+![Detection delay](results/drift/figures/fig4_detection_delay.png)
+
+*Figure 6.4. Mean delay over the runs that detected the drift. A missing point means no run detected it.*
+
+| Drift | Size | Detection rate (ADWIN / KS / PH) | Mean delay in records (ADWIN / KS / PH) |
+|---|---|---|---|
+| Sudden | 0.10 std | 0.35 / 0.70 / 0.30 | 1,327 / 1,255 / 1,891 |
+| Sudden | 0.25 std | 1.00 / 1.00 / 1.00 | 432 / 556 / 910 |
+| Sudden | 0.50 std | 1.00 / 1.00 / 1.00 | 136 / 431 / 401 |
+| Sudden | 1.00 std | 1.00 / 1.00 / 1.00 | 55 / 356 / 189 |
+| Gradual | 0.10 std | 0.00 / 0.25 / 0.00 | – / 1,642 / – |
+| Gradual | 0.25 std | 0.95 / 0.95 / 0.65 | 1,543 / 1,625 / 1,805 |
+| Gradual | 0.50 std | 1.00 / 1.00 / 1.00 | 1,023 / 1,181 / 1,324 |
+| Gradual | 1.00 std | 1.00 / 1.00 / 1.00 | 687 / 856 / 925 |
+
+![Categorical drift](results/drift/figures/fig5_categorical.png)
+
+*Figure 6.5. Categorical drift in `marital_status`. ADWIN here watches the share of the affected category. The chi-square delay at 10% comes from a single detected run, so treat it as rough.*
+
+| Records relabelled | Detection rate (ADWIN / chi-square) | Mean delay in records (ADWIN / chi-square) |
+|---|---|---|
+| 10% | 0.5 / 0.1 | 1,204 / 1,895 |
+| 20% | 1.0 / 0.9 | 693 / 983 |
+| 30% | 1.0 / 1.0 | 357 / 531 |
+
+### 6.4 Findings
+
+1. **Every detector finds drifts of 0.5 std or more, every time.** Below that, sensitivity separates them.
+2. **ADWIN is the fastest once a shift is clear** (about 55 records for a 1 std sudden shift) and has the lowest false-alarm rate. It is the best single alarm for the live stream.
+3. **The KS window test is the most sensitive to very small shifts** (70% detection at 0.1 std sudden) but can only react at window boundaries, so its delay never falls much below one window. It also keeps re-alarming after a drift, which makes it a good *state* indicator ("this window still differs") rather than a change alarm.
+4. **Page-Hinkley is the most conservative.** It is slowest on small and gradual shifts, in exchange for almost no false alarms.
+5. **Categorical drift needs about a 20% change before chi-square detects it reliably.** ADWIN on the category share reacts earlier and faster.
+
+The detectors are complementary: ADWIN and Page-Hinkley signal *when* a change starts, and the window tests show *which columns* changed and whether the change persists.
+
+### 6.5 Rerun on the corrected synthetic data
+
+The first version of the 40,000-record synthetic files repeated rows 1–10,000 as rows 10,001–20,000. After Matilda regenerated the data without duplicates, calibration and E3 were rerun. The false-alarm counts on drift-free data were identical, and detection delays grew by about 5–15%. That is expected: without the repeated block, the stream has more natural variation, so the detectors need a little more evidence before alarming. The ranking of the detectors and the chosen parameters did not change.
+
+### 6.6 Limitations
+
+- E3 uses the Adult data only. On Credit Default, `pay_0`–`pay_4` are currently typed as numerical in the SDV metadata while `pay_5` and `pay_6` are ordinal, so the live job tests the first four with KS and the last two with chi-square. Once the metadata is aligned (an open point from the quality review in section 5), all six will use chi-square, which is the correct test for status codes.
+- The reference sample is the start of the synthetic stream itself. The detectors therefore find change *within* the synthetic data, not the gap between synthetic and real data, which section 5 measures.
+- Each E3 cell has only 10–20 runs, so differences in detection rate below about 0.15 (3 runs) are within noise.
+
+**Reproduce:**
+
+```bash
+python -m drift.calibration
+python -m drift.experiment
+python -m drift.plots
+```
+
+Results: `results/drift/` · Figures: `results/drift/figures/` · Code: `drift/`
+
 ## 7. ML utility and privacy (Sharon)
 
 ## 8. Storage, sketches and dashboard (Alina)
@@ -410,3 +519,5 @@ bind-mounted source. Do not delete Kafka or InfluxDB volumes to add sampling.
 - Becker, B. and Kohavi, R. (1996). *Adult*. UCI Machine Learning Repository.
 - Yeh, I-C. (2009). *Default of Credit Card Clients*. UCI Machine Learning Repository.
 - Patki, N., Wedge, R. and Veeramachaneni, K. (2016). *The Synthetic Data Vault*. IEEE DSAA.
+- Bifet, A. and Gavaldà, R. (2007). Learning from time-changing data with adaptive windowing. SIAM International Conference on Data Mining.
+- Page, E. S. (1954). Continuous inspection schemes. *Biometrika*, 41(1/2), 100–115.
