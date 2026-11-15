@@ -303,8 +303,8 @@ bind-mounted source. Do not delete Kafka or InfluxDB volumes to add sampling.
 - The Gaussian copula truncates heavy tails: capital_gain (Adult) and pay_amt* (Credit Default) reach only a fraction of the real maximum, though their means and spreads are correct.
 - It cannot enforce logical rules between categorical columns on its own; the Adult relationship/`sex`/`marital_status` rule is handled with a FixedCombinations constraint, but other latent rules may remain (section 5.4).
 - For Credit Default, modelling pay_* as categorical improves their marginals at a cost to cross-column correlation (column pair trends 0.92 to 0.84). See section 5.4 for the reasoning behind keeping it.
-12. Conclusion and future work
-13. References
+
+12. References
 - Becker, B. and Kohavi, R. (1996). Adult. UCI Machine Learning Repository.
 - Yeh, I-C. (2009). Default of Credit Card Clients. UCI Machine Learning Repository.
 - Patki, N., Wedge, R. and Veeramachaneni, K. (2016). The Synthetic Data Vault. IEEE DSAA.
