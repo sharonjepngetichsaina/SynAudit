@@ -329,6 +329,19 @@ services:
     depends_on:
       kafka: { condition: service_healthy }
 
+  # On-demand reservoir sampling using the existing jobs image.
+  reservoir:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    profiles: ["tools"]
+    working_dir: /app
+    volumes: ["..:/app"]
+    entrypoint: ["python", "ingestion/reservoir_service.py", "--bootstrap", "kafka:9092", "--from-start", "--size", "1000", "--idle-timeout", "15"]
+    command: ["--dataset", "adult", "--source", "real"]
+    depends_on:
+      kafka: { condition: service_healthy }
+    restart: "no"
+    
 volumes:
   kafka-data:
   influxdb-data:

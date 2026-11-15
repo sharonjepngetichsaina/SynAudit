@@ -166,7 +166,7 @@ The synthetic set (40,000 rows) is larger than the real one (30,000). This is va
 
 Without the constraint, about a quarter of synthetic rows described an unmarried "spouse" and one in eight a female "Husband". With the constraint, the synthetic rates match the real data, which contains the same 0.01% residual. The generator's self-check reports a valid `relationship + sex + marital_status` combination in 100% of rows.
 
-The 13% duplicate rate in the real data comes from dropping `fnlwgt` (see `docs/DATA_INGESTION.md`). It matters for the privacy check: a synthetic row equal to a frequent real row is not necessarily a leak.
+The 13% duplicate rate in the real data comes from dropping `fnlwgt` (see `docs/01_DATA_INGESTION.md`). It matters for the privacy check: a synthetic row equal to a frequent real row is not necessarily a leak.
 
 #### Credit Default
 
@@ -245,9 +245,11 @@ all four sources, one after another:
 
 ```bash
 for ds in adult credit-default; do for src in real synthetic; do
-  docker compose -f docker/docker-compose.yml run --rm --no-deps -T dgim-adult-real \
-    python ingestion/producer.py --dataset $ds --source $src --bootstrap kafka:9092 --rate 0
-done; done
+  docker compose -f docker/docker-compose.yml run --rm producer --dataset $ds --source $src --rate 0; done; done
+```
+In case adult real fails to stream, run the following:
+```bash
+docker compose -f docker/docker-compose.yml run --rm producer --dataset adult --source real --rate 0
 ```
 
 On **Linux/macOS** (or any host where the broker is directly reachable) the

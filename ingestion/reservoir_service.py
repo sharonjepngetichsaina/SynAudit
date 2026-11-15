@@ -5,8 +5,8 @@ records against real ones, and none of them can hold the whole stream. This
 service keeps a bounded uniform sample and writes it to disk periodically, so
 the rest of the system has a reference set to query.
 
-Runs in its own consumer group, so it receives a full copy of the stream
-independently of the other services.
+Each run independently samples the retained topic from its earliest available
+offset, without joining a consumer group or committing offsets.
 
 Examples
 --------
@@ -92,9 +92,11 @@ def main() -> None:
     consumer = KafkaConsumer(
         topic,
         bootstrap_servers=args.bootstrap,
-        group_id=None if args.from_start else "synaudit-ingest-stats",
+        # Rebuild the sample independently from the retained topic.
+        # Never share DGIM's group or resume offsets with an empty sampler.
+        group_id=None,
         auto_offset_reset="earliest",
-        enable_auto_commit=not args.from_start,
+        enable_auto_commit=False,
         value_deserializer=lambda v: json.loads(v.decode("utf-8")),
         consumer_timeout_ms=args.idle_timeout * 1000 if args.idle_timeout else -1,
     )
