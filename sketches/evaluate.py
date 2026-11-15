@@ -45,7 +45,7 @@ def main():
     ap.add_argument("--dataset", required=True, choices=("adult", "credit-default"))
     ap.add_argument("--source", default="real", choices=("real", "synthetic"))
     args = ap.parse_args()
-    path = f"data/processed/{args.dataset}.csv" if args.source == "real" else f"data/synthetic/{args.dataset}.csv"
+    path = f"data/processed/{args.dataset}.csv" if args.source == "real" else f"data/synthetic/{args.dataset}-synthetic.csv"
     df = pd.read_csv(path)
     out = []
     for col in df.select_dtypes(include=["object", "string"]).columns:

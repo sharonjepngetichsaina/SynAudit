@@ -1,8 +1,8 @@
 # Built from the repository root (see docker/storage.compose.snippet.yml)
 FROM python:3.11-slim
 WORKDIR /app
-COPY dashboard/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY storage/ /app/storage/
 COPY dashboard/ /app/dashboard/
 WORKDIR /app/dashboard

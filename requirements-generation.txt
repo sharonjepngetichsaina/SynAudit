@@ -1,0 +1,4 @@
+# Installing this file also installs everything in requirements.txt, so on the host:
+#     pip install -r requirements-generation.txt
+-r requirements.txt
+sdv>=2.0,<3

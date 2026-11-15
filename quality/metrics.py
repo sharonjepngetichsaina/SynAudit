@@ -18,7 +18,7 @@ log = logging.getLogger("synaudit.metrics")
 
 # Pairs (categorical, numeric) that must always agree row by row.
 CONSISTENCY_PAIRS = {
-    "adult": [("education", "education_num")],
+    "adult": [("education", "education_num"), ("relationship", "sex"), ("relationship", "marital_status")],
     "credit-default": [],
 }
 
@@ -148,7 +148,8 @@ def zero_share_gap(real, synth, cols, min_share=ZERO_INFLATED_MIN_SHARE) -> dict
 def learn_valid_pairs(real, a: str, b: str) -> set:
     """Set of (a, b) value pairs that occur in real data."""
     sub = real[[a, b]].dropna()
-    return set(zip(sub[a].astype(str), sub[b].astype(float)))
+    b_numeric = pd.api.types.is_numeric_dtype(sub[b])
+    return set((str(x), float(y) if b_numeric else str(y)) for x, y in zip(sub[a], sub[b]))
 
 
 def consistency_rate(synth, valid_pairs: set, a: str, b: str) -> float:
@@ -162,7 +163,8 @@ def consistency_rate(synth, valid_pairs: set, a: str, b: str) -> float:
     sub = synth[[a, b]].dropna()
     if sub.empty:
         return math.nan
-    ok = [(str(x), float(y)) in valid_pairs for x, y in zip(sub[a], sub[b])]
+    b_numeric = pd.api.types.is_numeric_dtype(sub[b])
+    ok = [(str(x), float(y) if b_numeric else str(y)) in valid_pairs for x, y in zip(sub[a], sub[b])]
     return float(np.mean(ok))
 
 

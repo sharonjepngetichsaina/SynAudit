@@ -56,7 +56,7 @@ def source_path(dataset: str, source: str) -> Path:
     """Real data comes from data/processed/, synthetic from data/synthetic/."""
     if source == "real":
         return PROCESSED / f"{dataset}.csv"
-    return Path("data/synthetic") / f"{dataset}.csv"
+    return Path("data/synthetic") / f"{dataset}-synthetic.csv"
 
 
 def clean_value(value):
@@ -117,6 +117,9 @@ def main() -> None:
             acks="all",          # wait for durable commit rather than fire-and-forget
             linger_ms=5,         # small batching window, still near-real-time
             retries=3,
+            api_version=(3, 9),  # pin the broker version so the client skips its
+                                 # auto-probe, which fails through Docker Desktop's
+                                 # port proxy on Windows (NoBrokersAvailable)
         )
         print(f"connected to {args.bootstrap}")
 

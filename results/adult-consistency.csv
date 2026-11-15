@@ -1,2 +1,4 @@
 pair,consistency_rate
 education->education_num,1.0
+relationship->sex,1.0
+relationship->marital_status,1.0
