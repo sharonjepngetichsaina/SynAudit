@@ -2,7 +2,7 @@
 
 **Course:** Text, Audio, Image and Stream Mining, ELTE
 
-**Team:** Matilda Migwi, Diana Grigoryan, g-mbira, Sharon Jepngetich, Alina Amanbekova
+**Team:** Matilda Migwi, Diana Grigoryan, Grace Mbira, Sharon Jepngetich, Alina Amanbekova
 
 ---
 
