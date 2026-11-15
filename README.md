@@ -400,9 +400,9 @@ Comparing the real and synthetic sketches shows whether the generator keeps the 
 
 ![Sketches](docs/images/sketches.png)
 
-*Figure 8.2. Category shares of `education` in the real and synthetic Adult streams (Count-Min estimate) and the sketches' error against exact counts.*
+*Figure 8.2. Category shares of `income` in the real and synthetic Adult streams (Count-Min estimate) and the sketches' error against exact counts.*
 
-**Finding.** For low-cardinality columns such as `education` (16 values) or `default_payment_next_month` (2 values), exact counting is cheaper than the sketches (a few hundred bytes against 5,440 + 1,024). Sketches pay off on high-cardinality columns and long streams, where exact memory grows with the number of distinct values while sketch memory stays fixed.
+**Finding.** For low-cardinality columns such as `income` (16 values) or `default_payment_next_month` (2 values), exact counting is cheaper than the sketches (a few hundred bytes against 5,440 + 1,024). Sketches pay off on high-cardinality columns and long streams, where exact memory grows with the number of distinct values while sketch memory stays fixed.
 
 ### 8.4 Integration in Docker
 
