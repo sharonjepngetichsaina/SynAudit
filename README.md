@@ -334,6 +334,97 @@ Results: `results/drift/` · Figures: `results/drift/figures/` · Code: `drift/`
 
 ## 8. Storage, sketches and dashboard (Alina)
 
+**Question.** How do the results of all services reach one place, and can category frequencies and distinct counts be tracked on the stream in fixed memory?
+
+### 8.1 Storage: one write and read layer
+
+Every service writes through one module, `storage/db.py`, into one InfluxDB 2.7 bucket (`synaudit`). Each check has its own measurement:
+
+| Measurement | Written by | Content per window |
+|---|---|---|
+| `synaudit_quality`, `synaudit_column_quality` | quality service (`quality/sinks.py`) | SMD, TVD, correlation difference, SDMetrics, cluster coverage |
+| `drift_events` | drift job (`db.write_drift_rows`) | statistic, p-value, alarm per column and detector |
+| `utility` | utility job (`db.write_utility_rows`) | balanced accuracy TSTR/TRTR, utility ratio |
+| `privacy` | privacy job (`db.write_privacy_rows`) | exact and Bloom-filter copy rate |
+| `dgim` | DGIM service (`db.write_dgim_snapshot`) | approximate rate per condition, real and synthetic |
+| `sketches`, `sketch_freq` | sketch service | HyperLogLog and Count-Min estimates, errors, memory, category shares |
+
+Design decisions:
+
+- **No format changes for the other services.** Each `write_*` function accepts the rows a service already produces (its CSV columns or JSON snapshot). Integration only added one call at the end of each script, inside `try/except`, so a script without a running database still writes its CSV/JSON as before.
+- **Tags vs fields.** `dataset`, `source`, `column`, `detector`, `predicate` and `run_id` are tags (used to filter); measured values are fields. Counters (`window`, `alarm`, `rows_seen`, ...) are always written as integers, because InfluxDB rejects a field whose type changes.
+- **Re-runs replace, not duplicate.** Batch jobs delete earlier rows of the same measurement and dataset before writing. Without this, a second `docker compose up` doubled the drift alarms.
+- **Configuration through environment variables** (`INFLUX_URL`, `INFLUX_TOKEN`, `INFLUX_ORG`, `INFLUX_BUCKET`), so the same code runs on the host (`localhost:8086`) and in Docker (`influxdb:8086`).
+
+Reading uses one Flux query per page (`db.read`): filter by measurement and dataset, then `pivot` the fields into one row per window, returned as a pandas DataFrame.
+
+### 8.2 Dashboard
+
+A Streamlit app (`dashboard/`, http://localhost:8501) reads InfluxDB every 5 seconds, so the charts grow while the stream runs. Every page has a dataset filter. Dashed lines show alert thresholds, and a warning appears when the latest window crosses one (for example SDMetrics below 0.8 or a zero-share gap above 0.1).
+
+| Page | Shows |
+|---|---|
+| Overview | latest quality, drift alarms, utility ratio and exact-copy rate per dataset |
+| Quality | SMD/TVD per window, correlation difference, SDMetrics, CluStream vs DenStream coverage, per-column distances |
+| Drift | p-value per column and window, alarm map, alarm log |
+| Utility | utility ratio and balanced accuracy (TSTR vs TRTR) |
+| Privacy | exact vs Bloom-filter copy rate |
+| Real vs synthetic | DGIM rates of each condition in both streams and their gap |
+| Sketches | Count-Min category shares, HyperLogLog distinct counts and their errors |
+
+Screenshots after a full end-to-end run (all four streams published, 40,000 synthetic records per dataset):
+
+| Overview | Quality |
+|---|---|
+| ![Overview](docs/images/overview.png) | ![Quality](docs/images/quality.png) |
+| **Drift** | **Utility** |
+| ![Drift](docs/images/drift.png) | ![Utility](docs/images/utility.png) |
+| **Privacy** | **Real vs synthetic (DGIM)** |
+| ![Privacy](docs/images/privacy.png) | ![DGIM](docs/images/dgim.png) |
+
+*Figure 8.1. All dashboard pages. Each page reads its own measurement from InfluxDB; the numbers are discussed in the owner's section (4–7).*
+
+On that run the overview showed SDMetrics overall of about 0.89 (Adult) and 0.81 (Credit Default), both above the 0.8 threshold, 67 drift alarms in the injected-drift test, a utility ratio of 0.67 and an exact-copy rate of 0.70% (Adult) and 0% (Credit Default). These match the numbers reported by the individual services.
+
+### 8.3 Sketches: Count-Min Sketch and HyperLogLog
+
+The sketch service (`sketches/sketch_service.py`) reads both topics of a dataset from Kafka (consumer group `synaudit-sketches`) and keeps one Count-Min Sketch and one HyperLogLog per categorical column and stream. Every 1,000 records it writes estimates, exact reference values and memory use to InfluxDB.
+
+- **Count-Min Sketch** (Cormode & Muthukrishnan, 2005) estimates how often each value occurs. A table of d × w counters (d = 5, w = 272); each row has its own hash function, an update adds 1 to one cell per row, and the estimate is the minimum of the d cells. Collisions only add, so it never under-counts. With w = e/ε and d = ln(1/δ), the error is at most εN with probability 1 − δ; here ε ≈ 0.01 and δ ≈ 0.007. Memory: 5,440 bytes per column.
+- **HyperLogLog** (Flajolet et al., 2007) estimates the number of distinct values. The first p = 10 bits of a 64-bit hash choose one of m = 1,024 registers, which keep the longest run of leading zeros seen. Standard error 1.04/√m ≈ 3.3%, with linear counting for small cardinalities. Memory: 1,024 bytes per column. Repeated values do not change the estimate.
+- **Hashing.** BLAKE2b with a per-row salt instead of Python's `hash()`, which is randomised per process, so results are reproducible.
+- **Categorical columns** are text values, or integer codes with few distinct values (for example `sex`, `education`, `pay_0` in Credit Default).
+- **Tests** (`python -m sketches.test_sketches`): Count-Min never under-counts and stays within εN; HyperLogLog is within its error band and ignores duplicates.
+
+Comparing the real and synthetic sketches shows whether the generator keeps the same categories (HyperLogLog distinct counts) and the same shares (Count-Min frequencies).
+
+![Sketches](docs/images/sketches.png)
+
+*Figure 8.2. Category shares of `education` in the real and synthetic Adult streams (Count-Min estimate) and the sketches' error against exact counts.*
+
+**Finding.** For low-cardinality columns such as `education` (16 values) or `default_payment_next_month` (2 values), exact counting is cheaper than the sketches (a few hundred bytes against 5,440 + 1,024). Sketches pay off on high-cardinality columns and long streams, where exact memory grows with the number of distinct values while sketch memory stays fixed.
+
+### 8.4 Integration in Docker
+
+`docker/docker-compose.yml` starts Kafka (with topic creation), Kafka UI, InfluxDB, the dashboard and all services for both datasets. Streaming services (quality, DGIM, sketches) run continuously; batch jobs (utility, privacy, drift) compute once, write to InfluxDB and exit with code 0. `depends_on` with health checks starts a service only after Kafka and InfluxDB are ready. The batch jobs, DGIM and the producer share one image (`docker/jobs.Dockerfile`), so it is built once.
+
+### 8.5 Limitations
+
+- Utility, privacy and drift read CSV files in batch rather than consuming Kafka, so their pages fill at once instead of window by window.
+- The integer-code rule for categorical columns is a heuristic. A zero-inflated money column such as `capital_gain` can look categorical in the first 1,000 records and is written once before being dropped. Taking the column types from the SDV metadata file, as the drift job does, would remove this.
+- The dashboard shows whatever is in the bucket; a clean comparison needs `docker compose down -v` before the run.
+- Re-publishing the same topics makes the streaming services count the records again (Count-Min counts grow, HyperLogLog does not), so each stream should be published once per run.
+- On macOS with Python 3.14, `pip install -r requirements.txt` fails to build `pillow` for Streamlit 1.39; the host needs Python 3.11 (section 3). The Docker images are unaffected.
+
+**Reproduce:**
+
+```bash
+python -m sketches.test_sketches
+docker compose -f docker/docker-compose.yml up -d sketches-adult sketches-credit-default dashboard
+```
+
+Code: `storage/`, `dashboard/`, `sketches/` · Compose: `docker/docker-compose.yml`
+
 ## 9. End-to-end execution
 
 Run commands from the repository root. The examples in this section use **PowerShell**.
