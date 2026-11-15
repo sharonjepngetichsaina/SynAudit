@@ -1,6 +1,7 @@
 # SynAudit: Real-Time Quality and Privacy Monitoring for Streaming Synthetic Data
 
 **Course:** Text, Audio, Image and Stream Mining, ELTE
+
 **Team:** Matilda Migwi, Diana Grigoryan, g-mbira, Sharon Jepngetich, Alina Amanbekova
 
 ---
