@@ -6,9 +6,11 @@ Prepares the datasets, runs the Kafka environment, and replays records into the
 topics the rest of the system consumes. Also implements two stream algorithms:
 reservoir sampling and DGIM.
 
-**Read [`../docs/stream-contract.md`](../docs/stream-contract.md) before writing
+**Read [`stream-contract.md`](stream-contract.md) before writing
 a consumer.** It defines the topic names and the record format, and it is the
 interface between this layer and every other service.
+
+All commands below are run from the repository root.
 
 ---
 
@@ -16,7 +18,7 @@ interface between this layer and every other service.
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows Git Bash: source .venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
@@ -31,11 +33,11 @@ python ingestion/preprocess.py        # -> data/processed/
 ```
 
 **2. Start Kafka.** Broker in KRaft mode, four topics, web UI on
-[localhost:8080](http://localhost:8080).
+[localhost:8081](http://localhost:8081).
 
 ```bash
-cd docker && docker compose up -d
-docker compose logs kafka-init        # should list the four topics
+docker compose -f docker/docker-compose.yml up -d kafka kafka-init kafka-ui
+docker compose -f docker/docker-compose.yml logs kafka-init        # should list the four topics
 ```
 
 **3. Replay a dataset into its topic.**
@@ -46,7 +48,19 @@ python ingestion/producer.py --dataset adult --source real --rate 50
 
 `--rate` is records per second; `0` streams as fast as possible. `--limit N`
 stops after N records. `--dry-run` prints records instead of sending them,
-which is the quickest way to see the format.
+which is the quickest way to see the format. `producer.py` pins the Kafka
+client's `api_version` so it skips the broker version auto-probe, which fails
+through Docker Desktop's port proxy on Windows (`NoBrokersAvailable`).
+
+On **Windows**, that port proxy is also unreliable for the Kafka protocol under
+load (`KafkaTimeoutError: Failed to update metadata`). Run the producer *inside*
+the Docker network instead, where `kafka:9092` is a direct hop, using the
+`producer` service in `docker/docker-compose.yml`:
+
+```bash
+docker compose -f docker/docker-compose.yml run --rm producer \
+  --dataset adult --source real --rate 0
+```
 
 **4. Run the stream statistics services** (each in its own terminal, while the
 producer runs in another).

@@ -309,6 +309,26 @@ services:
       influxdb: { condition: service_healthy }
     restart: "no"
 
+  # --- on-demand producer (streaming helper) ---
+  # Streams a processed/synthetic CSV into its Kafka topic from INSIDE the
+  # network, so it reaches kafka:9092 directly instead of going through the host
+  # port proxy (unreliable for the Kafka protocol on Docker Desktop / Windows).
+  # profiles:["tools"] keeps it out of `docker compose up`; run it explicitly,
+  # e.g. all four sources in sequence:
+  #   for ds in adult credit-default; do for src in real synthetic; do
+  #     docker compose -f docker/docker-compose.yml run --rm producer \
+  #       --dataset $ds --source $src --rate 0
+  #   done; done
+  producer:
+    image: synaudit-jobs:latest
+    pull_policy: never
+    profiles: ["tools"]
+    working_dir: /app
+    volumes: [ "..:/app" ]
+    entrypoint: ["python", "ingestion/producer.py", "--bootstrap", "kafka:9092"]
+    depends_on:
+      kafka: { condition: service_healthy }
+
 volumes:
   kafka-data:
   influxdb-data:

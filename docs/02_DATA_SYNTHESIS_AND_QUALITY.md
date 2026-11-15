@@ -30,10 +30,11 @@ On Linux/macOS:
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install dependencies. Generation needs `sdv`, which lives in the host-only
+`requirements-generation.txt` (it also installs everything in `requirements.txt`):
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-generation.txt
 ```
 
 ## Running it
