@@ -17,6 +17,16 @@ TARGETS = {
     "credit-default": "default_payment_next_month",
 }
 
+# Categorical (string) columns river must treat as nominal. A non-empty list
+# disables river's fast native tree backend, which only accepts numeric features
+# and raises "TypeError: must be real number, not str" on string columns.
+# Credit Default is all-numeric, so its list stays empty and keeps the native path.
+NOMINAL_ATTRIBUTES = {
+    "adult": ["workclass", "education", "marital_status", "occupation",
+              "relationship", "race", "sex", "native_country"],
+    "credit-default": [],
+}
+
 
 def load_data(dataset):
     """Read the real and synthetic CSV files for one dataset."""
@@ -71,8 +81,9 @@ def run(dataset, window=500, n_test=2000):
     synth_rows = to_rows(synthetic, dataset)
     test_rows = real_test[:n_test]
 
-    model_s = tree.HoeffdingTreeClassifier()
-    model_r = tree.HoeffdingTreeClassifier()
+    nominal = NOMINAL_ATTRIBUTES.get(dataset, [])
+    model_s = tree.HoeffdingTreeClassifier(nominal_attributes=nominal)
+    model_r = tree.HoeffdingTreeClassifier(nominal_attributes=nominal)
     results = []
 
     n = min(len(synth_rows), len(real_train))
