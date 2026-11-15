@@ -17,7 +17,7 @@ SynAudit generates synthetic versions of two tabular datasets (UCI Adult and UCI
 3. Environment setup
 4. Data ingestion (Matilda)
 5. Synthetic data generation and quality evaluation (Diana)
-6. Drift detection (g-mbira)
+6. Drift detection (Grace)
 7. ML utility and privacy (Sharon)
 8. Storage, sketches and dashboard (Alina)
 9. End-to-end execution
@@ -219,7 +219,7 @@ The trade-off is that column pair trends fell from 0.92 to 0.84, so the overall 
 
 **Residual limitation.** The extreme tail of `pay_amt*` is compressed: the synthetic maximum is about 90,000 against a real maximum near 870,000. The mean and spread are correct, so a handful of very large payments are under-represented.
 
-## 6. Drift detection (g-mbira)
+## 6. Drift detection (Grace)
 
 ## 7. ML utility and privacy (Sharon)
 
@@ -404,8 +404,8 @@ bind-mounted source. Do not delete Kafka or InfluxDB volumes to add sampling.
 - The Gaussian copula truncates heavy tails: `capital_gain` (Adult) and `pay_amt*` (Credit Default) reach only a fraction of the real maximum, though their means and spreads are correct.
 - It cannot enforce logical rules between categorical columns on its own; the Adult `relationship`/`sex`/`marital_status` rule is handled with a `FixedCombinations` constraint, but other latent rules may remain (section 5.4).
 - For Credit Default, modelling `pay_*` as categorical improves their marginals at a cost to cross-column correlation (column pair trends 0.92 to 0.84). See section 5.4 for the reasoning behind keeping it.
-
-## 12. References
+## 12. Conclusion and future work
+## 13. References
 
 - Becker, B. and Kohavi, R. (1996). *Adult*. UCI Machine Learning Repository.
 - Yeh, I-C. (2009). *Default of Credit Card Clients*. UCI Machine Learning Repository.
