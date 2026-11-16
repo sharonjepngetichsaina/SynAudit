@@ -142,12 +142,12 @@ The generator fits SDV's `GaussianCopulaSynthesizer` on the processed real data.
 | Rows × columns | 48,842 × 14 | 40,000 × 14 |
 | Duplicate synthetic rows | — | 0 |
 | `capital_gain`: share of zeros | 91.7% | 91.6% |
-| `capital_gain`: mean | 1,079.1 | 1,088.0 |
+| `capital_gain`: mean | 1,079.1 | 1,093.3 |
 | `capital_loss`: share of zeros | 95.3% | 95.3% |
-| `capital_loss`: mean | 87.5 | 88.3 |
+| `capital_loss`: mean | 87.5 | 88.5 |
 | `education` → `education_num` consistent | 100% | 100% |
 
-The zero shares match within 0.1 percentage points, and the means are within 1%. Before the zero-inflation fix, the synthetic mean of `capital_gain` was about 35,784, roughly 33 times the real value.
+The zero shares match within 0.15 percentage points, and the means are within 1.5%. Before the zero-inflation fix, the synthetic mean of `capital_gain` was about 35,784, roughly 33 times the real value.
 
 ### 5.3 Generation results: Credit Default
 
@@ -173,21 +173,21 @@ The synthetic set (40,000 rows) is larger than the real one (30,000). This is va
 
 | Metric | Result |
 |---|---|
-| Missing-value rate: `workclass` / `occupation` / `native_country` | real 5.73% / 5.75% / 1.75% vs synthetic 5.70% / 5.64% / 1.67% |
+| Missing-value rate: `workclass` / `occupation` / `native_country` | real 5.73% / 5.75% / 1.75% vs synthetic 5.74% / 5.70% / 1.74% |
 | Duplicate rows | real 6,374 (13.0%), synthetic 0 |
-| Numeric standardized mean difference (max) | 0.018 (`hours_per_week`) |
-| Categorical TVD (max) | 0.0075 (`education`) |
-| Mean absolute correlation difference | 0.056 |
+| Numeric standardized mean difference (max) | 0.015 (`age`) |
+| Categorical TVD (max) | 0.0089 (`relationship`) |
+| Mean absolute correlation difference | 0.058 |
 | `education` → `education_num` consistency | 100% |
 | Zero-share gap: `capital_gain` / `capital_loss` | 0.001 / 0.000 |
-| SDMetrics overall | **0.901** |
+| SDMetrics overall | **0.938** |
 | SDMetrics column shapes | 0.972 |
-| SDMetrics column pair trends | 0.829 |
+| SDMetrics column pair trends | 0.904 |
 
 **Interpretation.** The marginal distributions (each column on its own) are reproduced closely. All categories are present, every TVD is below 0.01, numeric means are within 0.02 standard deviations, and the missing-value rates match. Two weaknesses remain:
 
-1. **Tails are truncated.** Real `capital_gain` reaches 99,999 (std 7,452), synthetic only 42,509 (std 3,801). In Adult, 99,999 is a top-code shared by a few hundred records. A Gaussian copula cannot reproduce an isolated cluster that far out, so the mean is preserved but extreme cases are under-represented.
-2. **Dependencies between columns are weaker than the marginals.** Column pair trends (0.83) and the correlation difference (0.056) show that the joint structure is less faithful than the individual columns. A Gaussian copula encodes categories as numbers and cannot, on its own, express logical rules such as *relationship = Husband ⇒ sex = Male*.
+1. **Tails are truncated.** Real `capital_gain` reaches 99,999 (std 7,452), synthetic only 33,738 (std 3,805). In Adult, 99,999 is a top-code shared by a few hundred records. A Gaussian copula cannot reproduce an isolated cluster that far out, so the mean is preserved but extreme cases are under-represented.
+2. **Dependencies between columns are weaker than the marginals.** Column pair trends (0.90, against 0.97 for column shapes) and the correlation difference (0.058) show that the joint structure is less faithful than the individual columns. A Gaussian copula encodes categories as numbers and cannot, on its own, express logical rules such as *relationship = Husband ⇒ sex = Male*.
 
 **Invalid combinations before and after the `FixedCombinations` constraint:**
 
@@ -199,7 +199,7 @@ The synthetic set (40,000 rows) is larger than the real one (30,000). This is va
 
 Without the constraint, about a quarter of synthetic rows described an unmarried "spouse" and one in eight a female "Husband". With the constraint, the synthetic rates match the real data, which contains the same 0.01% residual. The generator's self-check reports a valid `relationship + sex + marital_status` combination in 100% of rows.
 
-The 13% duplicate rate in the real data comes from dropping `fnlwgt` (see `docs/DATA_INGESTION.md`). It matters for the privacy check: a synthetic row equal to a frequent real row is not necessarily a leak.
+The 13% duplicate rate in the real data comes from dropping `fnlwgt` (see [`docs/01_DATA_INGESTION.md`](docs/01_DATA_INGESTION.md)). It matters for the privacy check: a synthetic row equal to a frequent real row is not necessarily a leak.
 
 #### Credit Default
 
@@ -218,6 +218,30 @@ The 13% duplicate rate in the real data comes from dropping `fnlwgt` (see `docs/
 The trade-off is that column pair trends fell from 0.92 to 0.84, so the overall score is marginally below the baseline. Modelling `pay_*` as categorical fixes their marginal distribution but weakens how the copula represents their correlation with the other columns, and the repayment-status codes are correlated with default and with the money columns. The fixes were kept because the defects they remove (for example a status code showing 31% zeros where the real data has 52%) are visible on inspection and are exactly what the monitoring should not have to report as a generator failure, whereas the pair-trend change is subtler; and because categorical is the correct model for an ordinal code.
 
 **Residual limitation.** The extreme tail of `pay_amt*` is compressed: the synthetic maximum is about 90,000 against a real maximum near 870,000. The mean and spread are correct, so a handful of very large payments are under-represented.
+
+### 5.5 Streaming quality monitoring: CluStream and DenStream
+
+The batch checks in 5.4 compare two complete files. The streaming monitor (`quality/monitor.py`, `quality/consumer.py`) repeats a lighter version of them on the live Kafka stream: it keeps a sliding window of the last 500 real and 500 synthetic records, re-scores every 100 new synthetic records, and runs SDMetrics every fifth window (Adult) or every tenth window (Credit Default). Alongside those statistics it clusters both streams, so it can tell whether the synthetic stream occupies the same regions of feature space as the real one, not only whether the column statistics agree. `quality/clustering.py` implements two stream clustering algorithms from their papers, once per source (real, synthetic) and with identical parameters.
+
+- **CluStream** (Aggarwal et al., 2003). Online phase: each record is absorbed into the nearest of at most *q* micro-clusters, each stored as a cluster feature vector (count, linear sum, squared sum, and the same for timestamps). A record that falls outside the nearest cluster's maximal boundary opens a new micro-cluster, and when the limit is reached the oldest cluster is deleted or the two closest are merged. Offline phase: weighted k-means (k = 5) over the micro-cluster centroids gives macro-clusters. The pyramidal time frame of the paper is left out because only the current clustering is needed. *q* is 40 for Adult and 60 for Credit Default.
+- **DenStream** (Cao et al., 2006). Micro-clusters have a weight that decays over time (2^(-λ·age), λ = 0.002) and are kept as potential or outlier micro-clusters; an outlier is promoted when its weight reaches β·μ and dropped when it decays or is pruned. Offline phase: a DBSCAN-style pass over the potential micro-clusters gives macro-clusters and leaves noise points out. The parameters are ε = 0.12 and μ = 8 for Adult, ε = 0.30 and μ = 8 for Credit Default, with β = 0.3.
+
+Numeric features are scaled to [0, 1] with the ranges in the SDV metadata, so a single distance threshold applies to every column. Each window is compared with three scores per algorithm:
+
+- **Centroid distance:** the distance between optimally matched real and synthetic cluster centres.
+- **Membership TVD:** the total variation distance between the shares of real and synthetic records falling into each real cluster.
+- **Coverage ratio:** the ratio of the synthetic to the real mean distance to the nearest real micro-cluster. About 1 means the synthetic points lie where the real ones do.
+
+**Results.** The values below are means over the recorded windows after the first five (`results/stream/adult-windows.csv`, 330 windows; `results/stream/credit-default-windows.csv`, 605 windows).
+
+| Metric | Adult CluStream | Adult DenStream | Credit CluStream | Credit DenStream |
+|---|---|---|---|---|
+| Centroid distance | 0.10 | 0.11 | 0.31 | 0.34 |
+| Membership TVD | 0.07 | 0.22 | 0.40 | 0.50 |
+| Coverage ratio | 1.23 | 1.22 | 1.32 | 1.38 |
+
+On Adult the cluster structure of the two streams is close: CluStream's centres are about 0.1 apart in a [0, 1] space and the share of records in each cluster differs by 7%. Credit Default is clearly further apart, in line with its weaker column pair trends in 5.4 (0.84 against 0.90 for Adult). The membership TVD is also noisy from window to window on Credit Default (0.01 to 0.66 for CluStream), because a 500-record window gives only a few records per cluster. Treat these as monitoring signals that move when the synthetic stream degrades, not as a pass/fail threshold. The windows files are the numerical evidence for these figures, and no cluster-based alarm limit has been calibrated.
+
 
 ## 6. Drift detection (Grace)
 
@@ -735,3 +759,5 @@ bind-mounted source. Do not delete Kafka or InfluxDB volumes to add sampling.
 - Kirsch, A. and Mitzenmacher, M. (2006). Less hashing, same performance: building a better Bloom filter. *European Symposium on Algorithms (ESA)*, 456–467.
 - Esteban, C., Hyland, S. L. and Rätsch, G. (2017). Real-valued (medical) time series generation with recurrent conditional GANs. arXiv:1706.02633.
 - Brodersen, K. H., Ong, C. S., Stephan, K. E. and Buhmann, J. M. (2010). The balanced accuracy and its posterior distribution. *20th International Conference on Pattern Recognition (ICPR)*, 3121–3124.
+- Aggarwal, C. C., Han, J., Wang, J. and Yu, P. S. (2003). A Framework for Clustering Evolving Data Streams. *Proceedings of the 29th International Conference on Very Large Data Bases (VLDB)*, pp. 81-92.
+- Cao, F., Ester, M., Qian, W. and Zhou, A. (2006). Density-Based Clustering over an Evolving Data Stream with Noise. *Proceedings of the 2006 SIAM International Conference on Data Mining (SDM)*, pp. 328-339.
