@@ -232,6 +232,18 @@ Numeric features are scaled to [0, 1] with the ranges in the SDV metadata, so a 
 - **Membership TVD:** the total variation distance between the shares of real and synthetic records falling into each real cluster.
 - **Coverage ratio:** the ratio of the synthetic to the real mean distance to the nearest real micro-cluster. About 1 means the synthetic points lie where the real ones do.
 
+### 5.6 Limitations
+
+- **Zero bills are lost (Credit Default).** The real `bill_amt1`–`bill_amt6` contain 6.7–13.4% zeros, but the synthetic data has none, because `bill_amt*` have no zero-inflation path like `pay_amt*`.
+- **Tails and spread are compressed.** Synthetic maxima reach only 5–41% of the real ones for `bill_amt*` and `pay_amt*`, and the standard deviation is also too low for `pay_amt*` (36–45% of real) and `capital_gain` (51%), although the means match.
+- **Column types are not handled consistently.** The batch evaluator picks numeric columns from pandas dtypes, so integer-coded categories (`pay_*`, `sex`, `education`, `marriage`, the default flag) are scored as numbers, and in the saved metadata `pay_0`, `pay_2`–`pay_4` are numerical while `pay_5` and `pay_6` are ordinal.
+- **Quality scores miss the loss of the feature–label relationship.** SDMetrics is high (0.94 Adult, 0.87 Credit Default), yet a model trained on the synthetic data performs at chance level (section 7.4), and section 5 has no label-aware check.
+- **Statistical coverage is limited.** The standardized mean difference only compares means and the correlation difference is Pearson-based, so nonlinear and categorical–numerical dependencies are not measured directly, and column pair trends (0.90 and 0.84) are below column shapes (0.97 and 0.90).
+- **Consistency rules exist for Adult only.** Three rules are checked for Adult (the `education`, `relationship`, `sex` and `marital_status` pairs); no business rules are checked for Credit Default.
+- **One generator, one seed.** Only a Gaussian copula with seed 42 was run, so we cannot say how much scores vary between seeds or compared with other synthesizers.
+- **Streaming monitor is simplified and uncalibrated.** Windows are the last 500 records of each stream, not matched by event time or sequence number, and the CluStream and DenStream parameters were set by hand with no calibrated alarm threshold (CluStream also omits the pyramidal time frame).
+
+
 **Results.** The values below are means over the recorded windows after the first five (`results/stream/adult-windows.csv`, 330 windows; `results/stream/credit-default-windows.csv`, 605 windows).
 
 | Metric | Adult CluStream | Adult DenStream | Credit CluStream | Credit DenStream |
@@ -241,7 +253,6 @@ Numeric features are scaled to [0, 1] with the ranges in the SDV metadata, so a 
 | Coverage ratio | 1.23 | 1.22 | 1.32 | 1.38 |
 
 On Adult the cluster structure of the two streams is close: CluStream's centres are about 0.1 apart in a [0, 1] space and the share of records in each cluster differs by 7%. Credit Default is clearly further apart, in line with its weaker column pair trends in 5.4 (0.84 against 0.90 for Adult). The membership TVD is also noisy from window to window on Credit Default (0.01 to 0.66 for CluStream), because a 500-record window gives only a few records per cluster. Treat these as monitoring signals that move when the synthetic stream degrades, not as a pass/fail threshold. The windows files are the numerical evidence for these figures, and no cluster-based alarm limit has been calibrated.
-
 
 ## 6. Drift detection (Grace)
 
