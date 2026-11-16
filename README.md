@@ -249,9 +249,6 @@ On Adult the cluster structure of the two streams is close: CluStream's centres 
 - **Column types are not handled consistently.** The batch evaluator picks numeric columns from pandas dtypes, so integer-coded categories (`pay_*`, `sex`, `education`, `marriage`, the default flag) are scored as numbers, and in the saved metadata `pay_0`, `pay_2`–`pay_4` are numerical while `pay_5` and `pay_6` are ordinal.
 - **Quality scores miss the loss of the feature–label relationship.** SDMetrics is high (0.94 Adult, 0.87 Credit Default), yet a model trained on the synthetic data performs at chance level (section 7.4), and section 5 has no label-aware check.
 - **Statistical coverage is limited.** The standardized mean difference only compares means and the correlation difference is Pearson-based, so nonlinear and categorical–numerical dependencies are not measured directly, and column pair trends (0.90 and 0.84) are below column shapes (0.97 and 0.90).
-- **Consistency rules exist for Adult only.** Three rules are checked for Adult (the `education`, `relationship`, `sex` and `marital_status` pairs); no business rules are checked for Credit Default.
-- **One generator, one seed.** Only a Gaussian copula with seed 42 was run, so we cannot say how much scores vary between seeds or compared with other synthesizers.
-- **Streaming monitor is simplified and uncalibrated.** Windows are the last 500 records of each stream, not matched by event time or sequence number, and the CluStream and DenStream parameters were set by hand with no calibrated alarm threshold (CluStream also omits the pyramidal time frame).
 
 ## 6. Drift detection (Grace)
 
