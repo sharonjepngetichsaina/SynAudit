@@ -331,6 +331,124 @@ python -m drift.plots
 Results: `results/drift/` · Figures: `results/drift/figures/` · Code: `drift/`
 
 ## 7. ML utility and privacy (Sharon)
+**Question.** Is the synthetic data useful for training a model, and does it leak real records?
+
+Synthetic data has two jobs that pull in opposite directions. It should be close enough to the real data that a model trained on it works on real people, and far enough that no real person can be found in it. This section measures both on the stream: ML utility with Hoeffding trees, and privacy with an exact-copy check backed by a Bloom filter.
+
+### 7.1 ML utility: TSTR vs TRTR with Hoeffding trees
+
+**Protocol.** Utility is measured with *train on synthetic, test on real* (TSTR, Esteban et al., 2017) against the baseline *train on real, test on real* (TRTR):
+
+1. The real records are shuffled once (seed 42) and 20% are held out as a test set that no model ever trains on. The first 2,000 of these form the fixed test set.
+2. Model **S** learns from the synthetic stream and model **R** from the remaining real records, one record at a time, in parallel.
+3. Every 500 records both models are scored on the same 2,000 real test records.
+4. Both training streams are cut to the same length, so S never sees more data than R. Adult: 39,000 records (78 windows). Credit Default: 24,000 records (48 windows).
+
+Target labels: `income` (`>50K` is the positive class) for Adult and `default_payment_next_month` (1 is positive) for Credit Default.
+
+**Algorithm.** Both models are **Hoeffding trees** (Domingos & Hulten, 2000), implemented with `river.tree.HoeffdingTreeClassifier`. A Hoeffding tree is a decision tree built for streams: it reads each record once, keeps only counts in its leaves, and never stores the data. A leaf is split only when the best attribute beats the second best by more than the Hoeffding bound
+
+ε = √( R² ln(1/δ) / 2n ),
+
+where R is the range of the split criterion, n the number of records seen in that leaf and δ the allowed probability of choosing the wrong attribute. With high probability the tree therefore makes the same splits a batch tree would make on all the data. That makes it a good fit for a stream monitor, because the utility score can be updated every window without retraining from scratch.
+
+The eight Adult text columns (`workclass`, `education`, `marital_status`, `occupation`, `relationship`, `race`, `sex`, `native_country`) are passed to the tree as `nominal_attributes`. Without this, river 0.27 crashes on text values (`TypeError: must be real number, not str`). Credit Default is all-numeric.
+
+**Metrics.** The classes are imbalanced (about 24% `>50K` in Adult, 22% defaults in Credit Default), so plain accuracy is misleading: a model that always predicts the majority class already scores 0.76–0.78. The main metric is therefore **balanced accuracy** (Brodersen et al., 2010), the mean of the recall on each class, where 0.5 means "no better than guessing". Accuracy and F1 are reported next to it. Two summary numbers are derived per window:
+
+- utility gap = balanced accuracy R − balanced accuracy S (written to the CSV)
+- utility ratio = balanced accuracy S / balanced accuracy R (computed in `storage/db.py` for the dashboard; 1.0 means the synthetic data is as useful as the real data)
+
+### 7.2 Privacy: exact-copy check with a Bloom filter
+
+**Question.** Does the generator output any record that is an exact copy of a real person?
+
+Each row is turned into a fingerprint: all column values joined with `|`, with whole-number floats written as integers so that `39.0` and `39` match. A synthetic row whose fingerprint equals a real row's fingerprint is counted as a copy.
+
+**Algorithm.** The real fingerprints are stored in a **Bloom filter** (Bloom, 1970), implemented from scratch in `privacy/bloom.py`. A Bloom filter is a bit array of m bits with k hash functions. Adding an item sets k bits; a lookup answers "seen" only if all k bits are set. It can give false positives but never false negatives: a "no" is always correct. For n items and a target false-positive rate p, the sizes are
+
+m = −n ln p / (ln 2)²  bits,  k = (m / n) ln 2  hash functions.
+
+With p = 1%, the filter for Adult (48,842 real rows) uses m = 468,154 bits (about 57 KB) and k = 7; for Credit Default (30,000 rows) m = 287,552 bits (about 35 KB) and k = 7. The k positions come from one SHA-256 digest by double hashing, (h₁ + i·h₂) mod m (Kirsch & Mitzenmacher, 2006), so results are reproducible across runs.
+
+**Procedure.** `privacy/copy_check.py`:
+
+1. Streams the real rows into the filter, checking each one before adding it. This gives a baseline: how often real rows repeat earlier real rows.
+2. Streams all 40,000 synthetic rows and checks each against the filter.
+3. Checks the same rows against an exact Python `set` of real fingerprints. The exact set is only there to measure the Bloom filter's error; in a deployment with a large or growing reference, the filter alone would be kept.
+4. Every 500 synthetic rows, writes the cumulative Bloom and exact copy rates.
+
+`privacy/test_bloom.py` checks the implementation: after adding 10,000 items, every one is found again (no false negatives), and 10,000 unseen items give a false-positive rate of about 1%.
+
+### 7.3 Results
+
+All numbers are from the run on the corrected 40,000-row synthetic data (no repeated block, see section 6.5), at the last window.
+
+**Utility**
+
+| Dataset | Balanced accuracy TRTR (R) | Balanced accuracy TSTR (S) | Utility gap | Utility ratio | F1 R / S |
+|---|---|---|---|---|---|
+| Adult | 0.743 | 0.500 | 0.243 | 0.67 | 0.63 / 0.00 |
+| Credit Default | 0.635 | 0.500 | 0.135 | 0.79 | 0.43 / 0.00 |
+
+![Utility page](docs/images/utility.png)
+
+*Figure 7.1. Dashboard utility page: balanced accuracy of both models per window and the utility ratio.*
+
+**Privacy**
+
+| Dataset | Synthetic rows checked | Exact copies | Bloom filter "seen" | Bloom false positives |
+|---|---|---|---|---|
+| Adult | 40,000 | 0.70% (281 rows) | 1.14% | 0.43 points |
+| Credit Default | 40,000 | 0% | 0.94% | 0.94 points |
+
+![Privacy page](docs/images/privacy.png)
+
+*Figure 7.2. Dashboard privacy page: exact and Bloom-filter copy rate per window.*
+
+### 7.4 Findings
+
+1. **The real-data model learns; the synthetic-data model does not.** R reaches 0.743 (Adult) and 0.635 (Credit Default). S stays at chance level throughout: exactly 0.500 in every Credit Default window, and between 0.47 and 0.51 on Adult. At the last window it predicts the majority class (`<=50K`, no default) for every test record (F1 = 0), which is why its plain accuracy (0.755 and 0.78) looks deceptively good.
+2. **The cause is the synthetic labels, not the model.** In the synthetic data the label looks almost independent of the features. For example, the share of `>50K` by `relationship` is 16–27% in every group of the synthetic Adult data, but 1–47% in the real data. On Credit Default S predicts the majority class in every window. On Adult it sometimes predicts `>50K`, but those predictions carry no real signal (F1 at most 0.15 in any window). The same code and settings learn normally on real data, so the utility check is working as intended: it is flagging a real weakness of the generator (section 5), which marginal quality scores alone did not show.
+3. **The Hoeffding tree needs evidence before it splits.** On Credit Default, R also stays at 0.500 for the first windows, then rises once enough records have reached a leaf to pass the bound. This shows the trade-off in δ: a split is safe but delayed.
+4. **No Credit Default record is copied.** Every Bloom "seen" there is a false positive, and the 0.94% rate matches the 1% target.
+5. **0.70% of synthetic Adult rows equal a real row, below our 1% alert level.** These are not necessarily leaks. Without `fnlwgt`, 13% of real Adult rows already repeat another real row (section 5.4), so many combinations are common profiles that a generator can produce by chance. A copy rate far below the real-data repeat rate suggests the generator is not memorising records.
+6. **The Bloom filter never missed a copy.** On both datasets its rate is the exact rate plus its false positives. On Adult the false-positive share (0.43 points) is below 1% because the duplicate real rows mean fewer distinct items were added than the filter was sized for, so fewer bits are set.
+
+The two checks together show the usual privacy–utility tension in an extreme form: the current synthetic data is safe (almost no copies) partly because it has lost the feature–label relationship that would make it useful.
+
+### 7.5 Limitations
+
+- **One model family.** Utility is measured with a Hoeffding tree only. A stronger or batch model (for example gradient boosting) could extract a weak signal the tree misses, so a ratio of 0.67 is a lower bound on what the synthetic data could support.
+- **Fixed test set of 2,000 records.** All windows use the same real test rows, so the scores are directly comparable over time, but each balanced accuracy has a sampling error of roughly ±0.01–0.02, so changes smaller than that between windows are noise.
+- **Exact copies only.** The check finds identical rows. A synthetic row that differs from a real row in one column is not flagged, although it may still identify the person. Distance to closest record (DCR) and membership-inference attacks (`median_dcr`, `mia_auc` in the InfluxDB schema) are not computed yet.
+- **Exact set kept for validation.** For a fair comparison, `copy_check.py` also keeps the full set of real fingerprints. A production version would keep only the Bloom filter and accept its 1% false positives.
+- **Batch jobs, not Kafka consumers.** Like drift (section 8.5), both jobs read the CSV files and then stream them internally, so the dashboard pages fill at once instead of window by window.
+
+**Reproduce (Docker):**
+
+```bash
+docker compose -f docker/docker-compose.yml build
+docker compose -f docker/docker-compose.yml up -d influxdb dashboard
+docker compose -f docker/docker-compose.yml run --rm --no-deps utility-adult
+docker compose -f docker/docker-compose.yml run --rm --no-deps utility-credit-default
+docker compose -f docker/docker-compose.yml run --rm --no-deps privacy-adult
+docker compose -f docker/docker-compose.yml run --rm --no-deps privacy-credit-default
+```
+
+The jobs need `data/processed/` and `data/synthetic/` from sections 4 and 5. Each job runs once, writes its CSV and its InfluxDB measurement (`utility` or `privacy`), and exits with code 0. Results then appear on the Utility and Privacy pages at http://localhost:8501.
+
+**Reproduce (host):**
+
+```bash
+python utility/tstr.py --dataset adult
+python utility/tstr.py --dataset credit-default
+python privacy/test_bloom.py
+python privacy/copy_check.py --dataset adult
+python privacy/copy_check.py --dataset credit-default
+```
+
+Results: `results/utility/`, `results/privacy/` · Code: `utility/`, `privacy/`
 
 ## 8. Storage, sketches and dashboard (Alina)
 
@@ -612,3 +730,8 @@ bind-mounted source. Do not delete Kafka or InfluxDB volumes to add sampling.
 - Patki, N., Wedge, R. and Veeramachaneni, K. (2016). *The Synthetic Data Vault*. IEEE DSAA.
 - Bifet, A. and Gavaldà, R. (2007). Learning from time-changing data with adaptive windowing. SIAM International Conference on Data Mining.
 - Page, E. S. (1954). Continuous inspection schemes. *Biometrika*, 41(1/2), 100–115.
+- Domingos, P. and Hulten, G. (2000). Mining high-speed data streams. *Proceedings of the 6th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining*, 71–80.
+- Bloom, B. H. (1970). Space/time trade-offs in hash coding with allowable errors. *Communications of the ACM*, 13(7), 422–426.
+- Kirsch, A. and Mitzenmacher, M. (2006). Less hashing, same performance: building a better Bloom filter. *European Symposium on Algorithms (ESA)*, 456–467.
+- Esteban, C., Hyland, S. L. and Rätsch, G. (2017). Real-valued (medical) time series generation with recurrent conditional GANs. arXiv:1706.02633.
+- Brodersen, K. H., Ong, C. S., Stephan, K. E. and Buhmann, J. M. (2010). The balanced accuracy and its posterior distribution. *20th International Conference on Pattern Recognition (ICPR)*, 3121–3124.
