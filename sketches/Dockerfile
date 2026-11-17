@@ -1,4 +1,4 @@
-# Built from the repository root (see docker/sketches.compose.snippet.yml)
+# Built from the repository root (see docker/docker-compose.yml)
 FROM python:3.11-slim
 WORKDIR /app
 COPY requirements.txt .
